@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from collections import defaultdict 
 import os 
 import tempfile 
-from data_networks import data_ttbar, ttbar_net
+import pdb 
+
 from torch.utils.data import DataLoader
 
 if __name__ == "__main__":
@@ -21,8 +22,37 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size"    ,  type=int  , default=500, help="Batch size")
     parser.add_argument("--epochs"        ,  type=int  , default=1000, help="Number of epochs")
     parser.add_argument("--prefetch"      ,  type=str  , default=None, help="Temporary directory to prefetch data")
+    parser.add_argument("--data-format"   ,  type=str  , default='h5', help="Extension of input files")
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
+    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl', 'ww'], help="Analysis to run, defines dataset type and neural network")
+
+
     args = parser.parse_args()
+    max_value=0.1
+    if args.analysis == 'ttbar':
+        from data_networks_ttbar import dataset, network
+    elif args.analysis == 'ttbar_ideal':
+        from data_networks_ttbar_ideal import dataset, network
+    elif args.analysis == 'ttbar_withneutrinos':
+        from data_networks_ttbar_withneutrinos import dataset, network
+    elif args.analysis == 'ttbb_godmode':
+        from data_networks_ttbb_godmode import dataset, network
+    elif args.analysis == 'ttZ_3l':
+        from data_networks_ttZ import dataset, network
+    elif args.analysis == 'ttZ_3l_v2':
+        from data_networks_ttZ_v2 import dataset, network
+    elif args.analysis == 'ttA_1l':
+        from data_networks_ttA_1l import dataset, network
+    elif args.analysis == 'ttW':
+        from data_networks_ttW import dataset, network
+        max_value=0.05
+    elif args.analysis == 'ttbar_pl':
+        from data_networks_ttbar_particle_level import dataset, network
+    elif args.analysis == 'ww':
+        from data_networks_ww import dataset, network
+
+    else:
+        raise NotImplementedError(f"Option {args.analysis} not implemented")
 
     if args == 'cpu':
         torch.set_num_threads(16)
@@ -38,19 +68,20 @@ if __name__ == "__main__":
     else:
         data_path=args.data_path
 
-    training =data_ttbar( f'{data_path}/*.h5'     , device=args.device)
-    test     =data_ttbar( f'{data_path}/test/*.h5', device='cpu')
-    train_cpu=data_ttbar( f'{data_path}/*.h5'     , device='cpu')
+    training =dataset( f'{data_path}/*.{args.data_format}'     , device=args.device)
+    test     =dataset( f'{data_path}/test/*.{args.data_format}', device='cpu')
+    train_cpu=dataset( f'{data_path}/*.{args.data_format}'     , device='cpu')
 
 
-    network=ttbar_net(args.device)
+    net=network(args.device)
+
     dataloader = DataLoader( training, batch_size=args.batch_size) 
 
     test_loader  = DataLoader(test, batch_size=1000)
     train_loader = DataLoader(train_cpu, batch_size=1000)
-    
 
-    optimizer = torch.optim.Adam(network.parameters(), lr=args.lr)
+
+    optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
     
     def loss_func( weight, score, control):
         return torch.mean(weight[:,0]*(score[:,0]-(weight[:,1]/weight[:,0]))**2)
@@ -65,8 +96,7 @@ if __name__ == "__main__":
         for weight, control, input_vars in loop:
             optimizer.zero_grad()
 
-            # sergio score=network( input_vars )
-            score=network( control[:,0].view(-1,1))
+            score=net( input_vars )
             loss=loss_func( weight, score, control)
 
             loss.backward()
@@ -79,11 +109,17 @@ if __name__ == "__main__":
                 regressed = defaultdict(list)
                 truth     = defaultdict(list)
                 sm        = defaultdict(list)
+                
+                symmetry_lin_plus  = []
+                symmetry_sm_plus   = []
+                symmetry_lin_minus = []
+                symmetry_sm_minus  = []
+                
+                binnings  = {}
                 binning = np.linspace(-1,1)
 
                 for weight, control, input_vars in dataset:
-                    #sergio score=network(input_vars)
-                    score=network(control[:,0].view(-1,1))
+                    score=net(input_vars)
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
                     count+=weight.shape[0]
 
@@ -93,24 +129,64 @@ if __name__ == "__main__":
                             regressed[var].append( np.histogram( control[:,var], weights=(weight[:,0]*score[:,0]), bins=binning)[0])
                             truth    [var].append( np.histogram( control[:,var], weights=(weight[:,1])           , bins=binning)[0])
                             sm       [var].append( np.histogram( control[:,var], weights=(weight[:,0])           , bins=binning)[0])
-                    if count >= 4e6:  # we only use 4M events for this
-                        break
+                            binnings [var]=binning
+
+                        bins=np.linspace(-max_value,max_value,26)
+                        content,bins=np.histogram( score[:,0], weights=(weight[:,0]*score[:,0]), bins=bins)
+                        regressed[control.shape[1]].append( content)
+                        truth    [control.shape[1]].append( np.histogram( score[:,0], weights=(weight[:,1])           , bins=bins)[0])
+                        sm       [control.shape[1]].append( np.histogram( score[:,0], weights=(weight[:,0])           , bins=bins)[0])
+                        binnings [control.shape[1]]=bins
+                       
+
+                        
+                        bins=np.linspace(0.,max_value,26)
+                        symmetry_lin_plus  .append( np.histogram(score[:,0], weights=(weight[:,1]*np.where(score[:,0] > 0, 1,0 )), bins=bins)[0])
+                        symmetry_sm_plus   .append( np.histogram(score[:,0], weights=(weight[:,0]*np.where(score[:,0] > 0, 1,0 )), bins=bins)[0])
+                        symmetry_lin_minus .append( np.histogram(-score[:,0], weights=(weight[:,1]*np.where(score[:,0] < 0, -1,0)), bins=bins)[0])
+                        symmetry_sm_minus  .append( np.histogram(-score[:,0], weights=(weight[:,0]*np.where(score[:,0] < 0, 1,0 )), bins=bins)[0])
+
+                        
+                        
+                    
 
                 if ep%5 == 0:
                     all_regressed = defaultdict(list)
                     all_truth     = defaultdict(list)
                     all_sm        = defaultdict(list)
+                    
+                    symmetry_lin_plus  = sum(symmetry_lin_plus)
+                    symmetry_lin_minus = sum(symmetry_lin_minus)
+                    symmetry_sm_plus   = sum(symmetry_sm_plus)
+                    symmetry_sm_minus  = sum(symmetry_sm_minus)
+
+                    bins=np.linspace(0.,0.1,26)
+                    plt.plot((bins[1:]+bins[:-1])/2, symmetry_lin_plus*10, label='Linear (positive) x 10')
+                    plt.plot((bins[1:]+bins[:-1])/2, symmetry_lin_minus*10, label='Linear (negative) x 10')
+                    plt.plot((bins[1:]+bins[:-1])/2, symmetry_sm_plus, label='SM (positive) ')
+                    plt.plot((bins[1:]+bins[:-1])/2, symmetry_sm_minus, label='SM (negative) ')
+                    plt.legend()
+                    plt.savefig(f'{args.name}/symmetry_{name}_var_epoch_{ep}.png')
+                    plt.clf()
+
+
                     for what in regressed:
                         
                         all_regressed[what] = sum(regressed[what])
                         all_truth    [what] = sum(truth[what])
                         all_sm       [what] = sum(sm[what])
 
+                        norm=200/np.sum(all_sm[what])
+                        plt.plot((binnings[what][1:]+binnings[what][:-1])/2, all_truth[what]*norm*10, label='Linear x 10')
+                        plt.plot((binnings[what][1:]+binnings[what][:-1])/2, all_sm[what]   *norm, label='SM')
+                        plt.legend()
+                        plt.savefig(f'{args.name}/histogram_{name}_var_{what}_epoch_{ep}.png')
+                        plt.clf()
+
                         all_regressed[what] = all_regressed[what] / all_sm[what]
                         all_truth    [what] = all_truth[what] / all_sm[what]
-                        
-                        plt.plot( (binning[1:]+binning[:-1])/2, all_regressed[what], label='Regressed')
-                        plt.plot( (binning[1:]+binning[:-1])/2, all_truth[what]    , label='Truth')
+                        plt.plot( (binnings[what][1:]+binnings[what][:-1])/2, all_regressed[what], label='Regressed')
+                        plt.plot( (binnings[what][1:]+binnings[what][:-1])/2, all_truth[what]    , label='Truth')
                         plt.savefig( f'{args.name}/closure_{name}_var_{what}_epoch_{ep}.png')
                         plt.clf()
 
@@ -121,10 +197,12 @@ if __name__ == "__main__":
             test_loss =do_end_of_era_processing(test_loader , 'test')
             train_loss_history.append( train_loss )
             test_loss_history.append( test_loss )
-            print(f"Epoch {ep:03d}: Loss (train) {train_loss:.5f}, Loss (test): {test_loss:.5f}")
-            torch.save( network.state_dict(), f"{args.name}/state_{ep}.pt")
+            print(f"Epoch {ep:03d}: Loss (train) {train_loss:.5e}, Loss (test): {test_loss:.5e}")
+            torch.save( net.state_dict(), f"{args.name}/state_{ep}.pt")
             torch.save( optimizer.state_dict(), f"{args.name}/optimizer_state_{ep}.pt")
             plt.plot( [x+1 for x in range(ep+1)], train_loss_history , label='Train')
             plt.plot( [x+1 for x in range(ep+1)], test_loss_history , label='Test')
+            plt.legend()
+            plt.yscale('log')
             plt.savefig(f"{args.name}/training_history.png")
             plt.clf()
