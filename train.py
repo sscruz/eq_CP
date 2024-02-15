@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--prefetch"      ,  type=str  , default=None, help="Temporary directory to prefetch data")
     parser.add_argument("--data-format"   ,  type=str  , default='h5', help="Extension of input files")
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
-    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl', 'ww'], help="Analysis to run, defines dataset type and neural network")
+    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww'], help="Analysis to run, defines dataset type and neural network")
 
 
     args = parser.parse_args()
@@ -48,6 +48,8 @@ if __name__ == "__main__":
         max_value=0.05
     elif args.analysis == 'ttbar_pl':
         from data_networks_ttbar_particle_level import dataset, network
+    elif args.analysis == 'ttA_pl':
+        from data_networks_ttA_particle_level import dataset, network
     elif args.analysis == 'ww':
         from data_networks_ww import dataset, network
 
