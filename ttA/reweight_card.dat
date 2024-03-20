@@ -1,1 +1,20 @@
-../MG5_aMC_v2_9_16/ttA_CPV_v4/Cards/reweight_card.dat
+change rwgt_dir rwgt
+change helicity False
+launch
+set DIM6 13 0.0
+set DIM6 11 0.0
+launch
+set DIM6 13 1.0
+set DIM6 11 0.0
+launch
+set DIM6 13 -2.0
+set DIM6 11 0.0
+launch
+set DIM6 13 0.0
+set DIM6 11 3.0
+launch
+set DIM6 13 0.0
+set DIM6 11 -4.0
+launch
+set DIM6 13 1.0
+set DIM6 11 1.0

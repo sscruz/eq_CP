@@ -1,1 +1,47 @@
-../MG5_aMC_v2_9_16/WZ_3l_delphes/Cards/proc_card_mg5.dat
+#************************************************************
+#*                     MadGraph5_aMC@NLO                    *
+#*                                                          *
+#*                *                       *                 *
+#*                  *        * *        *                   *
+#*                    * * * * 5 * * * *                     *
+#*                  *        * *        *                   *
+#*                *                       *                 *
+#*                                                          *
+#*                                                          *
+#*         VERSION 2.9.16                2023-07-26         *
+#*                                                          *
+#*    The MadGraph5_aMC@NLO Development Team - Find us at   *
+#*    https://server06.fynu.ucl.ac.be/projects/madgraph     *
+#*                                                          *
+#************************************************************
+#*                                                          *
+#*               Command File for MadGraph5_aMC@NLO         *
+#*                                                          *
+#*     run as ./bin/mg5_aMC  filename                       *
+#*                                                          *
+#************************************************************
+set group_subprocesses Auto
+set ignore_six_quark_processes False
+set low_mem_multicore_nlo_generation False
+set complex_mass_scheme False
+set gauge unitary
+set loop_optimized_output True
+set loop_color_flows False
+set max_npoint_for_channel 0
+set default_unset_couplings 99
+set max_t_for_channel 99
+set zerowidth_tchannel True
+import model sm
+define p = g u c d s u~ c~ d~ s~
+define j = g u c d s u~ c~ d~ s~
+define l+ = e+ mu+
+define l- = e- mu-
+define vl = ve vm vt
+define vl~ = ve~ vm~ vt~
+import model /work/sesanche/eq_CP/MG5_aMC_v2_9_16/models/SMEFTsim-3.0.\
+2/UFO_models/SMEFTsim_topU3l_alphaScheme_UFO-cWtil_massless
+generate p p > w+ z SMHLOOP=0 NPprop=0 NP=1, w+ > l+ vl  SMHLOOP=0 NPp\
+rop=0 NP=0 , z > l+ l- SMHLOOP=0 NPprop=0 NP=0
+add process p p > w- z SMHLOOP=0 NPprop=0 NP=1, w- > l- vl~  SMHLOOP=0\
+ NPprop=0 NP=0 , z > l+ l- SMHLOOP=0 NPprop=0 NP=0
+output WZ_3l_delphes

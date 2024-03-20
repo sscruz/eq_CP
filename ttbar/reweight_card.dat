@@ -1,1 +1,8 @@
-../MG5_aMC_v2_9_16/ttbar_dil_emu_withDecay_delphes/Cards/reweight_card.dat
+change rwgt_dir rwgt
+change helicity False
+launch --rwgt_name=rw0000
+set SMEFTcpv 8 0
+launch --rwgt_name=rw0001
+set SMEFTcpv 8 -1
+launch --rwgt_name=rw0002
+set SMEFTcpv 8 1
