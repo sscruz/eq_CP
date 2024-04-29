@@ -20,12 +20,13 @@ if __name__ == "__main__":
     parser.add_argument("--name"          ,  type=str  , default="", help="Name of directory to store everything")
     parser.add_argument("--lr"            ,  type=float, default=0.0001, help="Learning rate")
     parser.add_argument("--batch-size"    ,  type=int  , default=500, help="Batch size")
+    parser.add_argument("--num-threads"    ,  type=int  , default=16, help="Number of threads when running in cpu")
     parser.add_argument("--epochs"        ,  type=int  , default=1000, help="Number of epochs")
     parser.add_argument("--prefetch"      ,  type=str  , default=None, help="Temporary directory to prefetch data")
     parser.add_argument("--data-format"   ,  type=str  , default='h5', help="Extension of input files")
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
-    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww'], help="Analysis to run, defines dataset type and neural network")
-    parser.add_argument("--noequivariant"   ,  type=bool  , default=False, help="run on equivariant or non-equivariant ")
+    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl'], help="Analysis to run, defines dataset type and neural network")
+    parser.add_argument("--load-model"     , type=str, default=None, help="Analysis to run, defines dataset type and neural network")
 
     args = parser.parse_args()
     max_value=0.1
@@ -58,12 +59,18 @@ if __name__ == "__main__":
         from data_networks_ttA_particle_level import dataset, network
     elif args.analysis == 'ww':
         from data_networks_ww import dataset, network
-
+    elif args.analysis == 'wz':
+        from data_networks_wz_particle_level import dataset, network
+    elif args.analysis == 'tzq_pl':
+        from data_networks_tZq_particle_level import dataset, network
+        max_value=0.4
+    elif args.analysis == 'ttz_pl':
+        from data_networks_ttZ_particle_level import dataset, network
     else:
         raise NotImplementedError(f"Option {args.analysis} not implemented")
 
     if args == 'cpu':
-        torch.set_num_threads(16)
+        torch.set_num_threads(args.num_threads)
         
 
     os.makedirs( args.name, exist_ok=True)
@@ -76,24 +83,32 @@ if __name__ == "__main__":
     else:
         data_path=args.data_path
 
+    print("Loading training ")
     training =dataset( f'{data_path}/*.{args.data_format}'     , device=args.device)
+    print("Loading test ")
     test     =dataset( f'{data_path}/test/*.{args.data_format}', device='cpu')
+    print("Loading training again ")
     train_cpu=dataset( f'{data_path}/*.{args.data_format}'     , device='cpu')
 
 
     net=network(args.device)
 
-    dataloader = DataLoader( training, batch_size=args.batch_size) 
 
+    dataloader = DataLoader( training, batch_size=args.batch_size) 
     test_loader  = DataLoader(test, batch_size=1000)
     train_loader = DataLoader(train_cpu, batch_size=1000)
 
 
     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
+    if args.load_model is not None:
+        model_state = torch.load(args.load_model, map_location=args.device)
+        net.load_state_dict( model_state ) 
+        model_dir, model_file=os.path.split( args.load_model) 
+        opt_state   = torch.load( model_dir +  '/optimizer_' + model_file)
+        optimizer.load_state_dict(opt_state)
     
     def loss_func( weight, score, control):
         return torch.mean(weight[:,0]*(score[:,0]-(weight[:,1]/weight[:,0]))**2)
-
 
 
     train_loss_history=[]
@@ -101,14 +116,19 @@ if __name__ == "__main__":
     for ep in range(args.epochs):
 
         loop=tqdm( dataloader)
+        loss_per_batch=[]
         for weight, control, input_vars in loop:
             optimizer.zero_grad()
 
             score=net( input_vars )
             loss=loss_func( weight, score, control)
-
+            loss_per_batch.append( loss.item() )
             loss.backward()
             optimizer.step()
+        #plt.hist( loss_per_batch, bins=100, alpha=0.5 ) 
+        #print(loss_per_batch)
+        #plt.show()
+        #continue
 
         with torch.no_grad():
 
@@ -126,13 +146,15 @@ if __name__ == "__main__":
                 binnings  = {}
                 binning = np.linspace(-1,1)
 
+                for_plot_true=torch.empty(0); for_plot_regress=torch.empty(0)
                 for weight, control, input_vars in dataset:
                     score=net(input_vars)
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
                     count+=weight.shape[0]
 
-                    if ep%1 == 0:
-
+                    if ep%1== 0:
+                        for_plot_true   =torch.cat( [for_plot_true   , weight[:,1]/weight[:,0]])
+                        for_plot_regress=torch.cat( [for_plot_regress, score])
                         for var in range(control.shape[1]):
                             regressed[var].append( np.histogram( control[:,var], weights=(weight[:,0]*score[:,0]), bins=binning)[0])
                             truth    [var].append( np.histogram( control[:,var], weights=(weight[:,1])           , bins=binning)[0])
@@ -175,6 +197,10 @@ if __name__ == "__main__":
                     plt.plot((bins[1:]+bins[:-1])/2, symmetry_sm_minus, label='SM (negative) ')
                     plt.legend()
                     plt.savefig(f'{args.name}/symmetry_{name}_var_epoch_{ep}.png')
+                    plt.clf()
+                    print( for_plot_true.shape, for_plot_regress.shape) 
+                    plt.hist2d( for_plot_true.numpy(), for_plot_regress.flatten().numpy(), bins=40, range=[[-0.2,0.2],[-0.05,0.05]])
+                    plt.savefig(f'{args.name}/{name}_2d_{ep}.png')
                     plt.clf()
 
 
