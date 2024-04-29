@@ -5,34 +5,59 @@ import torch.nn as nn
 import glob 
 import torch 
 import uproot 
-
+import tables 
+import pandas as pd 
 class dataset( IterableDataset ):
-    def __init__( self, path, device):
+    def __init__( self, path,  device):
         self.files=glob.glob(path)
         self.device=device
         self.length=0
         for fil in self.files:
-            with uproot.open(fil) as f:
-                self.length+=f['Friends'].num_entries
-
+            if ".root" in path:
+                with uproot.open(fil) as f:
+                    self.length+=f['Friends'].num_entries
+            elif ".h5" in path:
+                h5file=tables.open_file(fil, mode='r')
+                self.length+=h5file.root.df.axis1.shape[0]
+                h5file.close()  
+                
     def __len__(self):
         return self.length
-
+    
+    def name_cvaris(self,index):
+        if index == 0:
+            return  "$c_{rn} - c_{nr}$"
+        elif index == 1:
+            return  "$c_{kn} - c_{nk}$"
+        elif index == 2:
+            return  "$c_{rk} - c_{kr}$"
+    
     def __iter__(self):
+    
         for fil in self.files:
-            with uproot.open(fil) as f:
-                tree = f['Friends']
-                control_vars=torch.Tensor( tree.arrays(['parton_cnr_crn','parton_cnk_ckn','parton_crk_ckr'],library='pd').values ).to(self.device)
-                weights  =torch.Tensor(tree.arrays(["weight_sm", "weight_ctgi_sm"], library='pd').values).to(self.device)
-                variables=torch.Tensor(tree.arrays(['lp_px', 'lp_py', 'lp_pz',
+            if ".root" in fil:
+               with uproot.open(fil) as f:
+                  tree = f['Friends']
+                  control_vars=torch.Tensor( tree.arrays(['parton_cnr_crn','parton_cnk_ckn','parton_crk_ckr'],library='pd').values ).to(self.device)
+                  weights  =torch.Tensor(tree.arrays(["weight_sm", "weight_ctgi_sm"], library='pd').values).to(self.device)
+                  variables=torch.Tensor(tree.arrays(['lp_px', 'lp_py', 'lp_pz',
                                                     'lm_px', 'lm_py', 'lm_pz',
                                                     'b1_px', 'b1_py', 'b1_pz',
                                                     'b2_px', 'b2_py', 'b2_pz',
                                                     'met_px', 'met_py'],library='pd').values).to(self.device)
-            yield from zip(weights, control_vars, variables)
-
-
-
+               yield from zip(weights, control_vars, variables)
+            
+            elif ".h5" in fil:
+               thedata=pd.read_hdf(fil, 'df')
+               control_vars=torch.Tensor( thedata[['parton_cnr_crn','parton_cnk_ckn','parton_crk_ckr']].values).to(self.device)
+               weights  =torch.Tensor(thedata[["weight_sm", "weight_lin_ctGI"]].values).to(self.device)
+               variables=torch.Tensor(thedata[['lep_pos_px', 'lep_pos_py', 'lep_pos_pz',
+                                             'lep_neg_px', 'lep_neg_py', 'lep_neg_pz',
+                                             'random_b1_px', 'random_b1_py', 'random_b1_pz',
+                                             'random_b2_px', 'random_b2_py', 'random_b2_pz',
+                                             'met_px', 'met_py']].values).to(self.device)
+               yield from zip(weights, control_vars, variables)
+               
 class network(nn.Module):
     def __init__(self, device):
         super().__init__()
@@ -59,3 +84,22 @@ class network(nn.Module):
                          dim=1)
 
         return self.main_module(x)-self.main_module(cpx)
+        
+class network_noeq(nn.Module):
+    def __init__(self, device):
+        super().__init__()
+        self.main_module = nn.Sequential( 
+            nn.Linear(14,80),
+            nn.LeakyReLU(),
+            nn.Linear(80, 80),
+            nn.LeakyReLU(),
+            nn.Linear(80, 40),
+            nn.LeakyReLU(),
+            nn.Linear(40, 20),
+            nn.LeakyReLU(),
+            nn.Linear(20, 1 ),
+        )
+        self.main_module.to(device)
+
+    def forward(self, x):
+        return self.main_module(x)
