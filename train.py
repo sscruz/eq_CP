@@ -48,7 +48,13 @@ if __name__ == "__main__":
         from data_networks_ttW import dataset, network
         max_value=0.05
     elif args.analysis == 'ttbar_pl':
-        from data_networks_ttbar_particle_level import dataset, network
+        from data_networks_ttbar_particle_level import dataset
+        if args.noequivariant:
+           from data_networks_ttbar_particle_level import network_noeq as network
+           print("no equivariant")
+        else:
+           from data_networks_ttbar_particle_level import network
+           print("equivariant")
     elif args.analysis == 'ttA_pl':
         from data_networks_ttA_particle_level import dataset, network
     elif args.analysis == 'ww':
@@ -146,7 +152,7 @@ if __name__ == "__main__":
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
                     count+=weight.shape[0]
 
-                    if ep%5 == 0:
+                    if ep%1== 0:
                         for_plot_true   =torch.cat( [for_plot_true   , weight[:,1]/weight[:,0]])
                         for_plot_regress=torch.cat( [for_plot_regress, score])
                         for var in range(control.shape[1]):
@@ -174,7 +180,7 @@ if __name__ == "__main__":
                         
                     
 
-                if ep%5 == 0:
+                if ep%1 == 0:
                     all_regressed = defaultdict(list)
                     all_truth     = defaultdict(list)
                     all_sm        = defaultdict(list)
@@ -215,6 +221,8 @@ if __name__ == "__main__":
                         all_truth    [what] = all_truth[what] / all_sm[what]
                         plt.plot( (binnings[what][1:]+binnings[what][:-1])/2, all_regressed[what], label='Regressed')
                         plt.plot( (binnings[what][1:]+binnings[what][:-1])/2, all_truth[what]    , label='Truth')
+                        plt.ylabel("Linear/SM")
+                        plt.xlabel(training.name_cvaris(what))
                         plt.savefig( f'{args.name}/closure_{name}_var_{what}_epoch_{ep}.png')
                         plt.clf()
 
@@ -228,6 +236,9 @@ if __name__ == "__main__":
             print(f"Epoch {ep:03d}: Loss (train) {train_loss:.5e}, Loss (test): {test_loss:.5e}")
             torch.save( net.state_dict(), f"{args.name}/state_{ep}.pt")
             torch.save( optimizer.state_dict(), f"{args.name}/optimizer_state_{ep}.pt")
+            print(type(test_loss),type(optimizer))
+            torch.save( test_loss, f"{args.name}/testloss_{ep}.pt")
+            torch.save( train_loss, f"{args.name}/trainloss_{ep}.pt")
             plt.plot( [x+1 for x in range(ep+1)], train_loss_history , label='Train')
             plt.plot( [x+1 for x in range(ep+1)], test_loss_history , label='Test')
             plt.legend()
