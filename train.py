@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("--prefetch"      ,  type=str  , default=None, help="Temporary directory to prefetch data")
     parser.add_argument("--data-format"   ,  type=str  , default='h5', help="Extension of input files")
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
-    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl'], help="Analysis to run, defines dataset type and neural network")
+    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl', 'ttA_delphes'], help="Analysis to run, defines dataset type and neural network")
     parser.add_argument("--load-model"     , type=str, default=None, help="Analysis to run, defines dataset type and neural network")
 
     args = parser.parse_args()
@@ -60,6 +60,10 @@ if __name__ == "__main__":
         max_value=0.4
     elif args.analysis == 'ttz_pl':
         from data_networks_ttZ_particle_level import dataset, network
+    elif args.analysis == "ttA_delphes": 
+        from data_networks_ttA_delphes import dataset, network
+
+
     else:
         raise NotImplementedError(f"Option {args.analysis} not implemented")
 
@@ -163,12 +167,6 @@ if __name__ == "__main__":
                         binnings [control.shape[1]]=bins
                        
 
-                        
-                        bins=np.linspace(0.,max_value,26)
-                        symmetry_lin_plus  .append( np.histogram(score[:,0], weights=(weight[:,1]*np.where(score[:,0] > 0, 1,0 )), bins=bins)[0])
-                        symmetry_sm_plus   .append( np.histogram(score[:,0], weights=(weight[:,0]*np.where(score[:,0] > 0, 1,0 )), bins=bins)[0])
-                        symmetry_lin_minus .append( np.histogram(-score[:,0], weights=(weight[:,1]*np.where(score[:,0] < 0, -1,0)), bins=bins)[0])
-                        symmetry_sm_minus  .append( np.histogram(-score[:,0], weights=(weight[:,0]*np.where(score[:,0] < 0, 1,0 )), bins=bins)[0])
 
                         
                         
@@ -179,25 +177,11 @@ if __name__ == "__main__":
                     all_truth     = defaultdict(list)
                     all_sm        = defaultdict(list)
                     
-                    symmetry_lin_plus  = sum(symmetry_lin_plus)
-                    symmetry_lin_minus = sum(symmetry_lin_minus)
-                    symmetry_sm_plus   = sum(symmetry_sm_plus)
-                    symmetry_sm_minus  = sum(symmetry_sm_minus)
-
-                    bins=np.linspace(0.,0.1,26)
-                    plt.plot((bins[1:]+bins[:-1])/2, symmetry_lin_plus*10, label='Linear (positive) x 10')
-                    plt.plot((bins[1:]+bins[:-1])/2, symmetry_lin_minus*10, label='Linear (negative) x 10')
-                    plt.plot((bins[1:]+bins[:-1])/2, symmetry_sm_plus, label='SM (positive) ')
-                    plt.plot((bins[1:]+bins[:-1])/2, symmetry_sm_minus, label='SM (negative) ')
-                    plt.legend()
-                    plt.savefig(f'{args.name}/symmetry_{name}_var_epoch_{ep}.png')
-                    plt.clf()
-                    print( for_plot_true.shape, for_plot_regress.shape) 
                     plt.hist2d( for_plot_true.numpy(), for_plot_regress.flatten().numpy(), bins=40, range=[[-0.2,0.2],[-0.05,0.05]])
                     plt.savefig(f'{args.name}/{name}_2d_{ep}.png')
                     plt.clf()
 
-
+                    plots_epoch={}
                     for what in regressed:
                         
                         all_regressed[what] = sum(regressed[what])
@@ -205,18 +189,33 @@ if __name__ == "__main__":
                         all_sm       [what] = sum(sm[what])
 
                         norm=200/np.sum(all_sm[what])
-                        plt.plot((binnings[what][1:]+binnings[what][:-1])/2, all_truth[what]*norm*10, label='Linear x 10')
-                        plt.plot((binnings[what][1:]+binnings[what][:-1])/2, all_sm[what]   *norm, label='SM')
+                        thebinning=(binnings[what][1:]+binnings[what][:-1])/2
+                        plt.plot(thebinning, all_truth[what]*norm*10, label='Linear x 10')
+                        plt.plot(thebinning, all_sm[what]   *norm, label='SM')
                         plt.legend()
                         plt.savefig(f'{args.name}/histogram_{name}_var_{what}_epoch_{ep}.png')
                         plt.clf()
+                        
+                        plots_epoch[f'histogram_{name}_{what}']={}
+                        plots_epoch[f'histogram_{name}_{what}']['binning']=thebinning.tolist()
+                        plots_epoch[f'histogram_{name}_{what}']['SM']     =(all_sm[what]   *norm   ).tolist()
+                        plots_epoch[f'histogram_{name}_{what}']['linear'] =(all_truth[what]*norm*10).tolist()
+                        
+
 
                         all_regressed[what] = all_regressed[what] / all_sm[what]
                         all_truth    [what] = all_truth[what] / all_sm[what]
-                        plt.plot( (binnings[what][1:]+binnings[what][:-1])/2, all_regressed[what], label='Regressed')
-                        plt.plot( (binnings[what][1:]+binnings[what][:-1])/2, all_truth[what]    , label='Truth')
+                        plt.plot( thebinning, all_regressed[what], label='Regressed')
+                        plt.plot( thebinning, all_truth[what]    , label='Truth')
                         plt.savefig( f'{args.name}/closure_{name}_var_{what}_epoch_{ep}.png')
                         plt.clf()
+                        plots_epoch[f'closure_{name}_{what}']={}
+                        plots_epoch[f'closure_{name}_{what}']['binning']=thebinning.tolist()
+                        plots_epoch[f'closure_{name}_{what}']['regressed'] =all_regressed[what].tolist()
+                        plots_epoch[f'closure_{name}_{what}']['truth']     =all_truth[what].tolist()
+                with open(f'{args.name}/plots_{name}_epoch_{ep}.txt', 'w') as f:
+                    print(plots_epoch)
+                    json.dump(plots_epoch, f)
 
 
                 return loss/count
