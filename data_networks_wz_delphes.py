@@ -8,33 +8,35 @@ import tables
 import pandas as pd 
 import numpy as np 
 
-class dataset( IterableDataset ):
+class dataset( Dataset ):
     def __init__( self, path, device):
         self.files=glob.glob(path)
         self.device=device
         self.length=0
         self.var_range = [[ -np.pi, np.pi], [-np.pi, np.pi]]
+
         dfs=[]
-        for fil in self.files:
-            h5file=tables.open_file(fil, mode='r')
-            self.length+=h5file.root.df.axis1.shape[0]
-            h5file.close()  
+        for f in self.files:
+            thedata=pd.read_hdf(f, 'df')
+            dfs.append(thedata)
 
-    def __len__(self):
-        return self.length
-
-    def __iter__(self):
-        for fil in self.files:
-            thedata=pd.read_hdf(fil, 'df')
-
-            control_vars=torch.Tensor( thedata[['phi_z','phi_w']].values ).to(self.device)
-            weights     =torch.Tensor( thedata[["weight_sm", "weight_cwtil_sm"]].values).to(self.device)
-            variables   =torch.Tensor( thedata[['lzp_px', 'lzp_py', 'lzp_pz',
+        big_df=pd.concat( dfs )
+        self.control_vars=torch.Tensor( big_df[['phi_z','phi_w']].values ).to(self.device)
+        self.weights     =torch.Tensor( big_df[["weight_sm", "weight_cwtil_sm"]].values).to(self.device)
+        self.variables   =torch.Tensor( big_df[['lzp_px', 'lzp_py', 'lzp_pz',
                                                 'lzm_px', 'lzm_py', 'lzm_pz',
                                                 'lw_px', 'lw_py', 'lw_pz',
                                                 'met_px', 'met_py',
                                                 'lwsign']].values).to(self.device)
-            yield from zip(weights, control_vars, variables)
+
+        self.length=len(big_df)
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, i):
+        return self.weights[i,:], self.control_vars[i,:], self.variables[i,:]
+
 
 class network(nn.Module):
     def __init__(self, device):
