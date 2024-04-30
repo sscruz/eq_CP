@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("--prefetch"      ,  type=str  , default=None, help="Temporary directory to prefetch data")
     parser.add_argument("--data-format"   ,  type=str  , default='h5', help="Extension of input files")
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
-    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl', 'ttA_delphes'], help="Analysis to run, defines dataset type and neural network")
+    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl', 'ttA_delphes', 'wz_delphes'], help="Analysis to run, defines dataset type and neural network")
     parser.add_argument("--load-model"     , type=str, default=None, help="Analysis to run, defines dataset type and neural network")
 
     args = parser.parse_args()
@@ -48,13 +48,7 @@ if __name__ == "__main__":
         from data_networks_ttW import dataset, network
         max_value=0.05
     elif args.analysis == 'ttbar_pl':
-        from data_networks_ttbar_particle_level import dataset
-        if args.noequivariant:
-           from data_networks_ttbar_particle_level import network_noeq as network
-           print("no equivariant")
-        else:
-           from data_networks_ttbar_particle_level import network
-           print("equivariant")
+        from data_networks_ttbar_particle_level import dataset, network
     elif args.analysis == 'ttA_pl':
         from data_networks_ttA_particle_level import dataset, network
     elif args.analysis == 'ww':
@@ -68,7 +62,8 @@ if __name__ == "__main__":
         from data_networks_ttZ_particle_level import dataset, network
     elif args.analysis == "ttA_delphes": 
         from data_networks_ttA_delphes import dataset, network
-
+    elif args.analysis == "wz_delphes": 
+        from data_networks_wz_delphes import dataset, network
 
     else:
         raise NotImplementedError(f"Option {args.analysis} not implemented")
@@ -148,7 +143,6 @@ if __name__ == "__main__":
                 symmetry_sm_minus  = []
                 
                 binnings  = {}
-                binning = np.linspace(-1,1)
 
                 for_plot_true=torch.empty(0); for_plot_regress=torch.empty(0)
                 for weight, control, input_vars in dataset:
@@ -156,10 +150,14 @@ if __name__ == "__main__":
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
                     count+=weight.shape[0]
 
-                    if ep%1== 0:
+                    if ep%5== 0:
                         for_plot_true   =torch.cat( [for_plot_true   , weight[:,1]/weight[:,0]])
                         for_plot_regress=torch.cat( [for_plot_regress, score])
                         for var in range(control.shape[1]):
+                            if hasattr(training, 'var_range'):
+                                binning = np.linspace(training.var_range[var][0],training.var_range[var][1])
+                            else:
+                                binning = np.linspace(-1,1)
                             regressed[var].append( np.histogram( control[:,var], weights=(weight[:,0]*score[:,0]), bins=binning)[0])
                             truth    [var].append( np.histogram( control[:,var], weights=(weight[:,1])           , bins=binning)[0])
                             sm       [var].append( np.histogram( control[:,var], weights=(weight[:,0])           , bins=binning)[0])
@@ -178,7 +176,7 @@ if __name__ == "__main__":
                         
                     
 
-                if ep%1 == 0:
+                if ep%5 == 0:
                     all_regressed = defaultdict(list)
                     all_truth     = defaultdict(list)
                     all_sm        = defaultdict(list)
@@ -203,7 +201,7 @@ if __name__ == "__main__":
                         plt.clf()
                         
                         plots_epoch[f'histogram_{name}_{what}']={}
-                        plots_epoch[f'histogram_{name}_{what}']['binning']=thebinning.tolist()
+                        plots_epoch[f'histogram_{name}_{what}']['binning']=binnings[what].tolist()
                         plots_epoch[f'histogram_{name}_{what}']['SM']     =(all_sm[what]   *norm   ).tolist()
                         plots_epoch[f'histogram_{name}_{what}']['linear'] =(all_truth[what]*norm*10).tolist()
                         
@@ -216,12 +214,11 @@ if __name__ == "__main__":
                         plt.savefig( f'{args.name}/closure_{name}_var_{what}_epoch_{ep}.png')
                         plt.clf()
                         plots_epoch[f'closure_{name}_{what}']={}
-                        plots_epoch[f'closure_{name}_{what}']['binning']=thebinning.tolist()
+                        plots_epoch[f'closure_{name}_{what}']['binning']=binnings[what].tolist()
                         plots_epoch[f'closure_{name}_{what}']['regressed'] =all_regressed[what].tolist()
                         plots_epoch[f'closure_{name}_{what}']['truth']     =all_truth[what].tolist()
-                with open(f'{args.name}/plots_{name}_epoch_{ep}.txt', 'w') as f:
-                    print(plots_epoch)
-                    json.dump(plots_epoch, f)
+                    with open(f'{args.name}/plots_{name}_epoch_{ep}.txt', 'w') as f:
+                        json.dump(plots_epoch, f)
 
 
                 return loss/count
@@ -233,7 +230,6 @@ if __name__ == "__main__":
             print(f"Epoch {ep:03d}: Loss (train) {train_loss:.5e}, Loss (test): {test_loss:.5e}")
             torch.save( net.state_dict(), f"{args.name}/state_{ep}.pt")
             torch.save( optimizer.state_dict(), f"{args.name}/optimizer_state_{ep}.pt")
-            print(type(test_loss),type(optimizer))
             torch.save( test_loss, f"{args.name}/testloss_{ep}.pt")
             torch.save( train_loss, f"{args.name}/trainloss_{ep}.pt")
             plt.plot( [x+1 for x in range(ep+1)], train_loss_history , label='Train')
