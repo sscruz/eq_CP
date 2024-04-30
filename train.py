@@ -86,8 +86,6 @@ if __name__ == "__main__":
     training =dataset( f'{data_path}/*.{args.data_format}'     , device=args.device)
     print("Loading test ")
     test     =dataset( f'{data_path}/test/*.{args.data_format}', device='cpu')
-    print("Loading training again ")
-    train_cpu=dataset( f'{data_path}/*.{args.data_format}'     , device='cpu')
 
 
     net=network(args.device)
@@ -95,7 +93,6 @@ if __name__ == "__main__":
 
     dataloader = DataLoader( training, batch_size=args.batch_size) 
     test_loader  = DataLoader(test, batch_size=1000)
-    train_loader = DataLoader(train_cpu, batch_size=1000)
 
 
     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
@@ -223,7 +220,7 @@ if __name__ == "__main__":
 
                 return loss/count
 
-            train_loss=do_end_of_era_processing(train_loader, 'train')
+            train_loss=do_end_of_era_processing(dataset, 'train')
             test_loss =do_end_of_era_processing(test_loader , 'test')
             train_loss_history.append( train_loss )
             test_loss_history.append( test_loss )
