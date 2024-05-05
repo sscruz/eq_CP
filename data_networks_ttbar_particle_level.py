@@ -7,22 +7,33 @@ import torch
 import uproot 
 import tables 
 import pandas as pd 
-class dataset( IterableDataset ):
+class dataset( Dataset ):
     def __init__( self, path,  device):
         self.files=glob.glob(path)
         self.device=device
-        self.length=0
-        for fil in self.files:
-            if ".root" in path:
-                with uproot.open(fil) as f:
-                    self.length+=f['Friends'].num_entries
-            elif ".h5" in path:
-                h5file=tables.open_file(fil, mode='r')
-                self.length+=h5file.root.df.axis1.shape[0]
-                h5file.close()  
-                
+
+        dfs=[]
+        for f in self.files:
+            thedata=pd.read_hdf(f, 'df')
+            dfs.append(thedata)
+        big_df=pd.concat( dfs )
+        self.length=len(big_df)
+
+
+        self.control_vars=torch.Tensor( big_df[['parton_cnr_crn','parton_cnk_ckn','parton_crk_ckr']].values).to(self.device)
+        self.weights  =torch.Tensor(big_df[["weight_sm", "weight_lin_ctGI"]].values).to(self.device)
+        self.variables=torch.Tensor(big_df[['lep_pos_px', 'lep_pos_py', 'lep_pos_pz',
+                                             'lep_neg_px', 'lep_neg_py', 'lep_neg_pz',
+                                             'random_b1_px', 'random_b1_py', 'random_b1_pz',
+                                             'random_b2_px', 'random_b2_py', 'random_b2_pz',
+                                             'met_px', 'met_py']].values).to(self.device)
+
+
     def __len__(self):
         return self.length
+
+    def __getitem__(self, i):
+        return self.weights[i,:], self.control_vars[i,:], self.variables[i,:]
     
     def name_cvaris(self,index):
         if index == 0:
@@ -31,32 +42,6 @@ class dataset( IterableDataset ):
             return  "$c_{kn} - c_{nk}$"
         elif index == 2:
             return  "$c_{rk} - c_{kr}$"
-    
-    def __iter__(self):
-    
-        for fil in self.files:
-            if ".root" in fil:
-               with uproot.open(fil) as f:
-                  tree = f['Friends']
-                  control_vars=torch.Tensor( tree.arrays(['parton_cnr_crn','parton_cnk_ckn','parton_crk_ckr'],library='pd').values ).to(self.device)
-                  weights  =torch.Tensor(tree.arrays(["weight_sm", "weight_ctgi_sm"], library='pd').values).to(self.device)
-                  variables=torch.Tensor(tree.arrays(['lp_px', 'lp_py', 'lp_pz',
-                                                    'lm_px', 'lm_py', 'lm_pz',
-                                                    'b1_px', 'b1_py', 'b1_pz',
-                                                    'b2_px', 'b2_py', 'b2_pz',
-                                                    'met_px', 'met_py'],library='pd').values).to(self.device)
-               yield from zip(weights, control_vars, variables)
-            
-            elif ".h5" in fil:
-               thedata=pd.read_hdf(fil, 'df')
-               control_vars=torch.Tensor( thedata[['parton_cnr_crn','parton_cnk_ckn','parton_crk_ckr']].values).to(self.device)
-               weights  =torch.Tensor(thedata[["weight_sm", "weight_lin_ctGI"]].values).to(self.device)
-               variables=torch.Tensor(thedata[['lep_pos_px', 'lep_pos_py', 'lep_pos_pz',
-                                             'lep_neg_px', 'lep_neg_py', 'lep_neg_pz',
-                                             'random_b1_px', 'random_b1_py', 'random_b1_pz',
-                                             'random_b2_px', 'random_b2_py', 'random_b2_pz',
-                                             'met_px', 'met_py']].values).to(self.device)
-               yield from zip(weights, control_vars, variables)
                
 class network(nn.Module):
     def __init__(self, device):
