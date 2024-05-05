@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
                 return loss/count
 
-            train_loss=do_end_of_era_processing(dataset, 'train')
+            train_loss=do_end_of_era_processing(dataloader, 'train')
             test_loss =do_end_of_era_processing(test_loader , 'test')
             train_loss_history.append( train_loss )
             test_loss_history.append( test_loss )
