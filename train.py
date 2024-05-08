@@ -27,6 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
     parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl'], help="Analysis to run, defines dataset type and neural network")
     parser.add_argument("--load-model"     , type=str, default=None, help="Analysis to run, defines dataset type and neural network")
+    parser.add_argument("--noequivariant"  , type=bool, default=False, help="NN type")
 
     args = parser.parse_args()
     max_value=0.1
