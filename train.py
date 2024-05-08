@@ -123,7 +123,7 @@ if __name__ == "__main__":
         for weight, control, input_vars in loop:
             optimizer.zero_grad()
 
-            score=net( input_vars )
+            score=net( input_vars.to(args.device) )
             loss=loss_func( weight, score, control)
             loss_per_batch.append( loss.item() )
             loss.backward()
@@ -185,7 +185,7 @@ if __name__ == "__main__":
                     all_truth     = defaultdict(list)
                     all_sm        = defaultdict(list)
                     
-                    plt.hist2d( for_plot_true.numpy(), for_plot_regress.flatten().numpy(), bins=40, range=[[-0.2,0.2],[-0.05,0.05]])
+                    plt.hist2d( for_plot_true.cpu().numpy(), for_plot_regress.cpu().flatten().numpy(), bins=40, range=[[-0.2,0.2],[-0.05,0.05]])
                     plt.savefig(f'{args.name}/{name}_2d_{ep}.png')
                     plt.clf()
 
