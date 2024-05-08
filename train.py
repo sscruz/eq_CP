@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
     parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl', 'ttA_delphes', 'wz_delphes'], help="Analysis to run, defines dataset type and neural network")
     parser.add_argument("--load-model"     , type=str, default=None, help="Analysis to run, defines dataset type and neural network")
-    parser.add_argument("--noequivariant"  , type=bool, default=False, help="NN type")
+    parser.add_argument("--noequivariant"  , type=int, default=0, help="NN type")
 
     args = parser.parse_args()
     max_value=0.1
@@ -49,7 +49,13 @@ if __name__ == "__main__":
         from data_networks_ttW import dataset, network
         max_value=0.05
     elif args.analysis == 'ttbar_pl':
-        from data_networks_ttbar_particle_level import dataset, network
+        from data_networks_ttbar_particle_level import dataset
+        if bool(args.noequivariant):
+           from data_networks_ttbar_particle_level import network_noeq as network
+           print("no equivariant")
+        else:
+           from data_networks_ttbar_particle_level import network
+           print("equivariant")
     elif args.analysis == 'ttA_pl':
         from data_networks_ttA_particle_level import dataset, network
     elif args.analysis == 'ww':
