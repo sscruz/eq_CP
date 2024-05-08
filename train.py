@@ -148,7 +148,7 @@ if __name__ == "__main__":
                 
                 binnings  = {}
 
-                for_plot_true=torch.empty(0); for_plot_regress=torch.empty(0)
+                for_plot_true=torch.empty(0, device=args.device); for_plot_regress=torch.empty(0, device=args.device)
                 for weight, control, input_vars in dataset:
                     score=net(input_vars)
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
@@ -162,16 +162,16 @@ if __name__ == "__main__":
                                 binning = np.linspace(training.var_range[var][0],training.var_range[var][1])
                             else:
                                 binning = np.linspace(-1,1)
-                            regressed[var].append( np.histogram( control[:,var], weights=(weight[:,0]*score[:,0]), bins=binning)[0])
-                            truth    [var].append( np.histogram( control[:,var], weights=(weight[:,1])           , bins=binning)[0])
-                            sm       [var].append( np.histogram( control[:,var], weights=(weight[:,0])           , bins=binning)[0])
+                            regressed[var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,0].cpu()*score[:,0].cpu()), bins=binning)[0])
+                            truth    [var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,1].cpu())           , bins=binning)[0])
+                            sm       [var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,0].cpu())           , bins=binning)[0])
                             binnings [var]=binning
 
                         bins=np.linspace(-max_value,max_value,26)
-                        content,bins=np.histogram( score[:,0], weights=(weight[:,0]*score[:,0]), bins=bins)
+                        content,bins=np.histogram( score[:,0].cpu(), weights=(weight[:,0].cpu()*score[:,0].cpu()), bins=bins)
                         regressed[control.shape[1]].append( content)
-                        truth    [control.shape[1]].append( np.histogram( score[:,0], weights=(weight[:,1])           , bins=bins)[0])
-                        sm       [control.shape[1]].append( np.histogram( score[:,0], weights=(weight[:,0])           , bins=bins)[0])
+                        truth    [control.shape[1]].append( np.histogram( score[:,0].cpu(), weights=(weight[:,1].cpu())           , bins=bins)[0])
+                        sm       [control.shape[1]].append( np.histogram( score[:,0].cpu(), weights=(weight[:,0].cpu())           , bins=bins)[0])
                         binnings [control.shape[1]]=bins
                        
 
