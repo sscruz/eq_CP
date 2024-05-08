@@ -231,6 +231,9 @@ if __name__ == "__main__":
             torch.save( train_loss, f"{args.name}/trainloss_{ep}.pt")
             plt.plot( [x+1 for x in range(ep+1)], train_loss_history , label='Train')
             plt.plot( [x+1 for x in range(ep+1)], test_loss_history , label='Test')
+            dict_trainin_history={ 'epochs' : [x+1 for x in range(ep+1)], 'train' : train_loss_history, 'test' : test_loss_history}
+            with open( f"{args.name}/training_history.json", 'w') as f:
+                json.dump( dict_trainin_history, f)
             plt.legend()
             plt.yscale('log')
             plt.savefig(f"{args.name}/training_history.png")
