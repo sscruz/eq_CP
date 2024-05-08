@@ -1,4 +1,4 @@
-name: pytorch
+name: eq_cp
 channels:
 - conda-forge
 - pytorch
