@@ -98,7 +98,7 @@ if __name__ == "__main__":
     net=network(args.device).to(args.device)
 
 
-    dataloader = DataLoader( training, batch_size=args.batch_size) 
+    dataloader = DataLoader( training, batch_size=args.batch_size)
     test_loader  = DataLoader(test, batch_size=1000)
 
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         optimizer.load_state_dict(opt_state)
     
     def loss_func( weight, score, control):
-        return torch.mean(weight[:,0].to(args.device)*(score[:,0].to(args.device)-(weight[:,1].to(args.device)/weight[:,0].to(args.device)))**2)
+        return torch.mean(weight[:,0]*(score[:,0]-(weight[:,1]/weight[:,0]))**2)
 
 
     train_loss_history=[]
@@ -121,8 +121,11 @@ if __name__ == "__main__":
         loop=tqdm( dataloader)
         loss_per_batch=[]
         for weight, control, input_vars in loop:
+            weight=weight.to(args.device)
+            control=control.to(args.device)
+            input_vars=input_vars.to(args.device)
             optimizer.zero_grad()
-            score=net( input_vars.to(args.device) )
+            score=net( input_vars )
             loss=loss_func( weight, score, control)
             loss_per_batch.append( loss.item() )
             loss.backward()
@@ -172,11 +175,6 @@ if __name__ == "__main__":
                         truth    [control.shape[1]].append( np.histogram( score[:,0].cpu(), weights=(weight[:,1].cpu())           , bins=bins)[0])
                         sm       [control.shape[1]].append( np.histogram( score[:,0].cpu(), weights=(weight[:,0].cpu())           , bins=bins)[0])
                         binnings [control.shape[1]]=bins
-                       
-
-
-                        
-                        
                     
 
                 if ep%5 == 0:
