@@ -95,7 +95,7 @@ if __name__ == "__main__":
     test     =dataset( f'{data_path}/test/*.{args.data_format}', device='cpu')
 
 
-    net=network(args.device)
+    net=network(args.device).to(args.device)
 
 
     dataloader = DataLoader( training, batch_size=args.batch_size) 
@@ -111,18 +111,17 @@ if __name__ == "__main__":
         optimizer.load_state_dict(opt_state)
     
     def loss_func( weight, score, control):
-        return torch.mean(weight[:,0]*(score[:,0]-(weight[:,1]/weight[:,0]))**2)
+        return torch.mean(weight[:,0].to(args.device)*(score[:,0].to(args.device)-(weight[:,1].to(args.device)/weight[:,0].to(args.device)))**2)
 
 
     train_loss_history=[]
     test_loss_history =[]
     for ep in range(args.epochs):
-
+        print("Epoch", ep)
         loop=tqdm( dataloader)
         loss_per_batch=[]
         for weight, control, input_vars in loop:
             optimizer.zero_grad()
-
             score=net( input_vars.to(args.device) )
             loss=loss_func( weight, score, control)
             loss_per_batch.append( loss.item() )
@@ -150,12 +149,12 @@ if __name__ == "__main__":
 
                 for_plot_true=torch.empty(0, device=args.device); for_plot_regress=torch.empty(0, device=args.device)
                 for weight, control, input_vars in dataset:
-                    score=net(input_vars)
+                    score=net(input_vars.to(args.device))
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
                     count+=weight.shape[0]
 
                     if ep%5== 0:
-                        for_plot_true   =torch.cat( [for_plot_true   , weight[:,1]/weight[:,0]])
+                        for_plot_true   =torch.cat( [for_plot_true   , weight[:,1].to(args.device)/weight[:,0].to(args.device)])
                         for_plot_regress=torch.cat( [for_plot_regress, score])
                         for var in range(control.shape[1]):
                             if hasattr(training, 'var_range'):
@@ -229,15 +228,15 @@ if __name__ == "__main__":
 
             train_loss=do_end_of_era_processing(dataloader, 'train')
             test_loss =do_end_of_era_processing(test_loader , 'test')
-            train_loss_history.append( train_loss )
-            test_loss_history.append( test_loss )
+            train_loss_history.append( train_loss.detach().cpu().numpy() )
+            test_loss_history.append( test_loss.detach().cpu().numpy() )
             print(f"Epoch {ep:03d}: Loss (train) {train_loss:.5e}, Loss (test): {test_loss:.5e}")
             torch.save( net.state_dict(), f"{args.name}/state_{ep}.pt")
             torch.save( optimizer.state_dict(), f"{args.name}/optimizer_state_{ep}.pt")
             torch.save( test_loss, f"{args.name}/testloss_{ep}.pt")
             torch.save( train_loss, f"{args.name}/trainloss_{ep}.pt")
-            plt.plot( [x+1 for x in range(ep+1)], train_loss_history , label='Train')
-            plt.plot( [x+1 for x in range(ep+1)], test_loss_history , label='Test')
+            plt.plot( [x+1 for x in range(ep+1)], train_loss_history, label='Train')
+            plt.plot( [x+1 for x in range(ep+1)], test_loss_history, label='Test')
             plt.legend()
             plt.yscale('log')
             plt.savefig(f"{args.name}/training_history.png")

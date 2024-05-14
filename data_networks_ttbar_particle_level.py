@@ -58,15 +58,16 @@ class network(nn.Module):
             nn.Linear(20, 1 ),
         )
         self.main_module.to(device)
+        self.device=device
 
     def forward(self, x):
-        
+
         cpx= torch.stack([-x[:,3], -x[:,4] , -x[:,5],    # -lep minus
                           -x[:,0], -x[:,1] , -x[:,2],    # -lep plus
                           -x[:,9], -x[:,10], -x[:,11],   # -b2 # this shouldnt add information but ok 
                           -x[:,6], -x[:,7] , -x[:,8],    # -b1 
                           -x[:,12],-x[:,13]          ],  # -met
-                         dim=1)
+                         dim=1).to(self.device)
 
         return self.main_module(x)-self.main_module(cpx)
         
