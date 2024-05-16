@@ -21,13 +21,14 @@ if __name__ == "__main__":
     parser.add_argument("--lr"            ,  type=float, default=0.0001, help="Learning rate")
     parser.add_argument("--batch-size"    ,  type=int  , default=500, help="Batch size")
     parser.add_argument("--num-threads"    ,  type=int  , default=16, help="Number of threads when running in cpu")
-    parser.add_argument("--epochs"        ,  type=int  , default=1000, help="Number of epochs")
+    parser.add_argument("--epochs"        ,  type=int  , default=200, help="Number of epochs")
     parser.add_argument("--prefetch"      ,  type=str  , default=None, help="Temporary directory to prefetch data")
     parser.add_argument("--data-format"   ,  type=str  , default='h5', help="Extension of input files")
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
     parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl', 'ttA_delphes', 'wz_delphes'], help="Analysis to run, defines dataset type and neural network")
     parser.add_argument("--load-model"     , type=str, default=None, help="Analysis to run, defines dataset type and neural network")
     parser.add_argument("--noequivariant"  , type=int, default=0, help="NN type")
+    parser.add_argument("--no-plot"  ,  action='store_true',  help="Skip plotting" ) 
 
     args = parser.parse_args()
     max_value=0.1
@@ -154,7 +155,7 @@ if __name__ == "__main__":
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
                     count+=weight.shape[0]
 
-                    if ep%5== 0:
+                    if ep%5== 0 and not args.no_plot:
                         for_plot_true   =torch.cat( [for_plot_true   , weight[:,1]/weight[:,0]])
                         for_plot_regress=torch.cat( [for_plot_regress, score])
                         for var in range(control.shape[1]):
@@ -180,7 +181,7 @@ if __name__ == "__main__":
                         
                     
 
-                if ep%5 == 0:
+                if ep%5 == 0 and not args.no_plot:
                     all_regressed = defaultdict(list)
                     all_truth     = defaultdict(list)
                     all_sm        = defaultdict(list)
