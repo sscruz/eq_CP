@@ -1,4 +1,4 @@
-name: pytorch_1.13
+name: eq_cp_1.13
 channels:
   - pytorch
   - nvidia

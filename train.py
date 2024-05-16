@@ -96,10 +96,10 @@ if __name__ == "__main__":
     test     =dataset( f'{data_path}/test/*.{args.data_format}', device='cpu')
 
 
-    net=network(args.device)
+    net=network(args.device).to(args.device)
 
 
-    dataloader = DataLoader( training, batch_size=args.batch_size) 
+    dataloader = DataLoader( training, batch_size=args.batch_size)
     test_loader  = DataLoader(test, batch_size=1000)
 
 
@@ -118,12 +118,14 @@ if __name__ == "__main__":
     train_loss_history=[]
     test_loss_history =[]
     for ep in range(args.epochs):
-
+        print("Epoch", ep)
         loop=tqdm( dataloader)
         loss_per_batch=[]
         for weight, control, input_vars in loop:
+            weight=weight.to(args.device)
+            control=control.to(args.device)
+            input_vars=input_vars.to(args.device)
             optimizer.zero_grad()
-
             score=net( input_vars )
             loss=loss_func( weight, score, control)
             loss_per_batch.append( loss.item() )
@@ -149,36 +151,31 @@ if __name__ == "__main__":
                 
                 binnings  = {}
 
-                for_plot_true=torch.empty(0); for_plot_regress=torch.empty(0)
+                for_plot_true=torch.empty(0, device=args.device); for_plot_regress=torch.empty(0, device=args.device)
                 for weight, control, input_vars in dataset:
-                    score=net(input_vars)
+                    score=net(input_vars.to(args.device))
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
                     count+=weight.shape[0]
 
                     if ep%5== 0 and not args.no_plot:
-                        for_plot_true   =torch.cat( [for_plot_true   , weight[:,1]/weight[:,0]])
+                        for_plot_true   =torch.cat( [for_plot_true   , weight[:,1].to(args.device)/weight[:,0].to(args.device)])
                         for_plot_regress=torch.cat( [for_plot_regress, score])
                         for var in range(control.shape[1]):
                             if hasattr(training, 'var_range'):
                                 binning = np.linspace(training.var_range[var][0],training.var_range[var][1])
                             else:
                                 binning = np.linspace(-1,1)
-                            regressed[var].append( np.histogram( control[:,var], weights=(weight[:,0]*score[:,0]), bins=binning)[0])
-                            truth    [var].append( np.histogram( control[:,var], weights=(weight[:,1])           , bins=binning)[0])
-                            sm       [var].append( np.histogram( control[:,var], weights=(weight[:,0])           , bins=binning)[0])
+                            regressed[var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,0].cpu()*score[:,0].cpu()), bins=binning)[0])
+                            truth    [var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,1].cpu())           , bins=binning)[0])
+                            sm       [var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,0].cpu())           , bins=binning)[0])
                             binnings [var]=binning
 
                         bins=np.linspace(-max_value,max_value,26)
-                        content,bins=np.histogram( score[:,0], weights=(weight[:,0]*score[:,0]), bins=bins)
+                        content,bins=np.histogram( score[:,0].cpu(), weights=(weight[:,0].cpu()*score[:,0].cpu()), bins=bins)
                         regressed[control.shape[1]].append( content)
-                        truth    [control.shape[1]].append( np.histogram( score[:,0], weights=(weight[:,1])           , bins=bins)[0])
-                        sm       [control.shape[1]].append( np.histogram( score[:,0], weights=(weight[:,0])           , bins=bins)[0])
+                        truth    [control.shape[1]].append( np.histogram( score[:,0].cpu(), weights=(weight[:,1].cpu())           , bins=bins)[0])
+                        sm       [control.shape[1]].append( np.histogram( score[:,0].cpu(), weights=(weight[:,0].cpu())           , bins=bins)[0])
                         binnings [control.shape[1]]=bins
-                       
-
-
-                        
-                        
                     
 
                 if ep%5 == 0 and not args.no_plot:
@@ -186,7 +183,7 @@ if __name__ == "__main__":
                     all_truth     = defaultdict(list)
                     all_sm        = defaultdict(list)
                     
-                    plt.hist2d( for_plot_true.numpy(), for_plot_regress.flatten().numpy(), bins=40, range=[[-0.2,0.2],[-0.05,0.05]])
+                    plt.hist2d( for_plot_true.cpu().numpy(), for_plot_regress.cpu().flatten().numpy(), bins=40, range=[[-0.2,0.2],[-0.05,0.05]])
                     plt.savefig(f'{args.name}/{name}_2d_{ep}.png')
                     plt.clf()
 
@@ -230,15 +227,15 @@ if __name__ == "__main__":
 
             train_loss=do_end_of_era_processing(dataloader, 'train')
             test_loss =do_end_of_era_processing(test_loader , 'test')
-            train_loss_history.append( train_loss )
-            test_loss_history.append( test_loss )
+            train_loss_history.append( train_loss.detach().cpu().numpy() )
+            test_loss_history.append( test_loss.detach().cpu().numpy() )
             print(f"Epoch {ep:03d}: Loss (train) {train_loss:.5e}, Loss (test): {test_loss:.5e}")
             torch.save( net.state_dict(), f"{args.name}/state_{ep}.pt")
             torch.save( optimizer.state_dict(), f"{args.name}/optimizer_state_{ep}.pt")
             torch.save( test_loss, f"{args.name}/testloss_{ep}.pt")
             torch.save( train_loss, f"{args.name}/trainloss_{ep}.pt")
-            plt.plot( [x+1 for x in range(ep+1)], train_loss_history , label='Train')
-            plt.plot( [x+1 for x in range(ep+1)], test_loss_history , label='Test')
+            plt.plot( [x+1 for x in range(ep+1)], train_loss_history, label='Train')
+            plt.plot( [x+1 for x in range(ep+1)], test_loss_history, label='Test')
             plt.legend()
             plt.yscale('log')
             plt.savefig(f"{args.name}/training_history.png")

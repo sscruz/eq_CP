@@ -53,6 +53,7 @@ class network(nn.Module):
             nn.Linear(20, 1 ),
         )
         self.main_module.to(device)
+        self.device=device
 
     def forward(self, x):
         
@@ -65,6 +66,6 @@ class network(nn.Module):
              -x[:,15], # -lep top sign
              -x[:,16],-x[:,17],  # -met
              -x[:,18],-x[:,19],-x[:,20], # -photon
-             ],dim=1)
+             ],dim=1).to(self.device)
 
         return self.main_module(x)-self.main_module(cpx)
