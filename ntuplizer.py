@@ -100,18 +100,20 @@ def process_file( fil ):
 
         # now profit from it 
         
-        lep=[deepcopy(particles['lp'] if lep[0]==particles['lp'] else deepcopy(particles['lm']])
-		lep=lep[0]
+        lep=[deepcopy(particles['lp']) if lep[0]==particles['lp'] else deepcopy(particles['lm'])]
+        lep=lep[0]
 		
-		for label in ['dp','dm','up','um','sp','sm','cp','cm']:
-			if particles[label]==lights[0]:
-				lights1=deepcopy(particles[label])
-			if particles[label]==lights[1]:
-				lights2=deepcopy(particles[label])
-		lig=lights1+lights2
+	
+        for label in ['dp','dm','up','um','sp','sm','cp','cm']:
+            if particles[label]==lights[0]:
+                lights1=deepcopy(particles[label])
+            if particles[label]==lights[1]:
+                lights2=deepcopy(particles[label])
+		
+        lig=lights1+lights2
 		
         lep.Boost(-boost_ttbar)
-		lig.Boost(-boost_ttbar)
+        lig.Boost(-boost_ttbar)
 
         lep_hat = lp.Vect().Unit()
         lig_hat = lp.Vect().Unit()
