@@ -79,7 +79,7 @@ class network_noeq(nn.Module):
     def __init__(self, device):
         super().__init__()
         self.main_module = nn.Sequential( 
-            nn.Linear(14,80),
+            nn.Linear(18,80),
             nn.LeakyReLU(),
             nn.Linear(80, 80),
             nn.LeakyReLU(),
