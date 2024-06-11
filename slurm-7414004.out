@@ -1,0 +1,16 @@
+no change     /nfs/fanae/user/uo278174/miniconda3/condabin/conda
+no change     /nfs/fanae/user/uo278174/miniconda3/bin/conda
+no change     /nfs/fanae/user/uo278174/miniconda3/bin/conda-env
+no change     /nfs/fanae/user/uo278174/miniconda3/bin/activate
+no change     /nfs/fanae/user/uo278174/miniconda3/bin/deactivate
+no change     /nfs/fanae/user/uo278174/miniconda3/etc/profile.d/conda.sh
+no change     /nfs/fanae/user/uo278174/miniconda3/etc/fish/conf.d/conda.fish
+no change     /nfs/fanae/user/uo278174/miniconda3/shell/condabin/Conda.psm1
+no change     /nfs/fanae/user/uo278174/miniconda3/shell/condabin/conda-hook.ps1
+no change     /nfs/fanae/user/uo278174/miniconda3/lib/python3.12/site-packages/xontrib/conda.xsh
+no change     /nfs/fanae/user/uo278174/miniconda3/etc/profile.d/conda.csh
+no change     /nfs/fanae/user/uo278174/.bashrc
+No action taken.
+
+CondaError: Run 'conda init' before 'conda activate'
+

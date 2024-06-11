@@ -25,7 +25,7 @@ def process_file( fil ):
         toret=[sm, lin, quad]
 
         # now the particles
-        part_list=[('lp',11), ('lm',-11), ('bp',5), ('bm',-5), ('nup',12), ('num',-12), ('tp',6), ('tm',-6)]
+        part_list=[('lp',11), ('lm',-11), ('bp',5), ('bm',-5), ('nup',12), ('num',-12), ('tp',6), ('tm',-6),('dp',1),('dm',-1),('up',2),('um',-2),('sp',3),('sm',-3),('cp',4),('cm',-4)]
         particles={}
         for label, pdgid in part_list:
             particles[label]=r.TLorentzVector()
@@ -37,15 +37,24 @@ def process_file( fil ):
         bs=[particles['bp'],particles['bm']]
         random.shuffle( bs ) 
         
-        
-        input_particles = [particles['lp'], particles['lm'], bs[0], bs[1]]
+        lights=[]
+		for label in ['dp','dm','up','um','sp','sm','cp','cm']:
+			if particles[label].E()!=0:
+				lights.append(particles[label]
+		if len(lights)!=2:
+			print("alarm")
+		random.shuffle(lights)
+		
+        lep=[particles['lp'] if particles['lm'].E()==0 else particles['lm']]
+        charge=[1 if lep[0]==particles['lm'] else -1]
+        input_particles = [lep[0], bs[0], bs[1], lights[0],lights[1]]
 
         for p in input_particles:
             for what in "Px,Py,Pz".split(","):
                 toret.append( getattr(p,what)())
 
         nus = particles['nup']+particles['num']
-        toret.extend([ nus.Px(), nus.Py()])
+        toret.extend([ nus.Px(), nus.Py(), charge])
 
         # now high-level (control) variables
 
@@ -88,20 +97,29 @@ def process_file( fil ):
         # nhat=(phat.Cross(khat))   #(sign/rval)*
 
         # now profit from it 
-        lp=deepcopy(particles['lp'])
-        lm=deepcopy(particles['lm'])
+        
+        lep=[deepcopy(particles['lp'] if lep[0]==particles['lp'] else deepcopy(particles['lm']])
+		lep=lep[0]
+		
+		for label in ['dp','dm','up','um','sp','sm','cp','cm']:
+			if particles[label]==lights[0]:
+				lights1=deepcopy(particles[label])
+			if particles[label]==lights[1]:
+				lights2=deepcopy(particles[label])
+		lig=lights1+lights2
+		
+        lep.Boost(-boost_ttbar)
+		lig.Boost(-boost_ttbar)
 
-        lp.Boost(-boost_ttbar)
-        lm.Boost(-boost_ttbar)
+        lep_hat = lp.Vect().Unit()
+        lig_hat = lp.Vect().Unit()
 
-        lp_hat = lp.Vect().Unit()
-        lm_hat = lm.Vect().Unit()
 
         #print(nhat.Dot(lphat)*rhat.Dot(lmhat), rhat.Dot(lphat)*nhat.Dot(lmhat))
         #print(kk)
-        cnr_crn = n_hat.Dot(lp_hat)*r_hat.Dot(lm_hat)-r_hat.Dot(lp_hat)*n_hat.Dot(lm_hat)
-        cnk_ckn = n_hat.Dot(lp_hat)*k_hat.Dot(lm_hat)-k_hat.Dot(lp_hat)*n_hat.Dot(lm_hat)
-        crk_ckr = r_hat.Dot(lp_hat)*k_hat.Dot(lm_hat)-k_hat.Dot(lp_hat)*r_hat.Dot(lm_hat)
+        cnr_crn = n_hat.Dot(lep_hat)*r_hat.Dot(lig_hat)-r_hat.Dot(lep_hat)*n_hat.Dot(lig_hat)
+        cnk_ckn = n_hat.Dot(lep_hat)*k_hat.Dot(lig_hat)-k_hat.Dot(lep_hat)*n_hat.Dot(lig_hat)
+        crk_ckr = r_hat.Dot(lep_hat)*k_hat.Dot(lig_hat)-k_hat.Dot(lep_hat)*r_hat.Dot(lig_hat)
         
         toret.extend([cnr_crn,cnk_ckn, crk_ckr])
 
@@ -111,12 +129,16 @@ def process_file( fil ):
         ret.append(toret)
 
 
-    cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lp,lm,b1,b2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
+    cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lep,b1,b2,light1,light2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py', 'lep_charge']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
     df=pd.DataFrame( ret, columns=cols)    
     df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5'),'df')
     #return ret
-
-files=glob("/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/*.lhe")
+import os
+if os.environ('USERNAME')==santivd24:
+	outputpath=/nfs/fanae/user/uo278174/[TFG]/eq_CP
+else:
+	outputpath=/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant
+files=glob(f"{outputpath}/ttbar/*.lhe")
 pool=Pool(15)
 pool.map( process_file, files)
 
