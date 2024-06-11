@@ -22,11 +22,13 @@ class dataset( Dataset ):
 
         self.control_vars=torch.Tensor( big_df[['parton_cnr_crn','parton_cnk_ckn','parton_crk_ckr']].values).to(self.device)
         self.weights  =torch.Tensor(big_df[["weight_sm", "weight_lin_ctGI"]].values).to(self.device)
-        self.variables=torch.Tensor(big_df[['lep_pos_px', 'lep_pos_py', 'lep_pos_pz',
-                                             'lep_neg_px', 'lep_neg_py', 'lep_neg_pz',
+        self.variables=torch.Tensor(big_df[['lep_px', 'lep_py', 'lep_pz',						#único lepton
                                              'random_b1_px', 'random_b1_py', 'random_b1_pz',
                                              'random_b2_px', 'random_b2_py', 'random_b2_pz',
-                                             'met_px', 'met_py']].values).to(self.device)
+                                             'light1_px', 'light1_py', 'light1_pz', 			#quark1
+                                             'light2_px', 'light2_py', 'light2_pz',				#quark2
+                                             'met_px', 'met_py',
+                                             'charge']].values).to(self.device)
 
 
     def __len__(self):
@@ -47,7 +49,7 @@ class network(nn.Module):
     def __init__(self, device):
         super().__init__()
         self.main_module = nn.Sequential( 
-            nn.Linear(14,80),
+            nn.Linear(18,80),
             nn.LeakyReLU(),
             nn.Linear(80, 80),
             nn.LeakyReLU(),
@@ -62,11 +64,13 @@ class network(nn.Module):
 
     def forward(self, x):
 
-        cpx= torch.stack([-x[:,3], -x[:,4] , -x[:,5],    # -lep minus
-                          -x[:,0], -x[:,1] , -x[:,2],    # -lep plus
-                          -x[:,9], -x[:,10], -x[:,11],   # -b2 # this shouldnt add information but ok 
-                          -x[:,6], -x[:,7] , -x[:,8],    # -b1 
-                          -x[:,12],-x[:,13]          ],  # -met
+        cpx= torch.stack([-x[:,3], -x[:,4] , -x[:,5],    # -b1
+                          -x[:,0], -x[:,1] , -x[:,2],    # -lep 
+                          -x[:,9], -x[:,10], -x[:,11],   # -q1
+                          -x[:,6], -x[:,7] , -x[:,8],    # -b2 
+                          -x[:,12],-x[:,13], -x[:,14],	#-q2	
+                          -x[:,15],-x[:,16],			#-met
+                           -x[:,17]],  					# -charge
                          dim=1).to(self.device)
 
         return self.main_module(x)-self.main_module(cpx)

@@ -38,7 +38,7 @@ def process_file( fil ):
         random.shuffle( bs ) 
         
         lights=[]
-		for label in ['dp','dm','up','um','sp','sm','cp','cm']:
+        for label in ['dp','dm','up','um','sp','sm','cp','cm']:
 			if particles[label].E()!=0:
 				lights.append(particles[label]
 		if len(lights)!=2:
