@@ -39,11 +39,13 @@ def process_file( fil ):
         
         lights=[]
         for label in ['dp','dm','up','um','sp','sm','cp','cm']:
-			if particles[label].E()!=0:
-				lights.append(particles[label]
-		if len(lights)!=2:
-			print("alarm")
-		random.shuffle(lights)
+            if particles[label].E()!=0:
+                lights.append(particles[label])
+        
+        if len(lights)!=2:
+            print("alarm")
+        
+        random.shuffle(lights)
 		
         lep=[particles['lp'] if particles['lm'].E()==0 else particles['lm']]
         charge=[1 if lep[0]==particles['lm'] else -1]
