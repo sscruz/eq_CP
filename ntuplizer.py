@@ -99,18 +99,33 @@ def process_file( fil ):
         # nhat=(phat.Cross(khat))   #(sign/rval)*
 
         # now profit from it 
-        
-        lep=[deepcopy(particles['lp']) if lep[0]==particles['lp'] else deepcopy(particles['lm'])]
-        lep=lep[0]
+
+        #lep=[deepcopy(particles['lp']) if lep[0]==particles['lp'] else deepcopy(particles['lm'])]
+        #lep=lep[0]
 		
+        if lep[0]==particles['lp']:
+            lep=deepcopy(particles['lp'])
+            for label in ['dp','dm','sp','sm']:
+                if particles[label]==lights[0]:
+                    lig=deepcopy(particles[label])
+                if particles[label]==lights[1]:
+                    lig=deepcopy(particles[label])
+        else:
+            lig=deepcopy(particles['lm'])
+            for label in ['dp','dm','sp','sm']:
+                if particles[label]==lights[0]:
+                    lep=deepcopy(particles[label])
+                if particles[label]==lights[1]:
+                    lep=deepcopy(particles[label])
+
 	
-        for label in ['dp','dm','up','um','sp','sm','cp','cm']:
-            if particles[label]==lights[0]:
-                lights1=deepcopy(particles[label])
-            if particles[label]==lights[1]:
-                lights2=deepcopy(particles[label])
+        #for label in ['dp','dm','up','um','sp','sm','cp','cm']:
+         #   if particles[label]==lights[0]:
+          #      lights1=deepcopy(particles[label])
+           # if particles[label]==lights[1]:
+            #    lights2=deepcopy(particles[label])
 		
-        lig=lights1+lights2
+        #lig=lights1+lights2
 		
         lep.Boost(-boost_ttbar)
         lig.Boost(-boost_ttbar)
