@@ -6,7 +6,7 @@ import random
 import math 
 from copy import deepcopy
 import numpy as np 
-from glob import glob 
+import glob 
 from multiprocessing import Pool 
 
 def process_file( fil ):
