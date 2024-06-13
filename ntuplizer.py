@@ -153,11 +153,14 @@ def process_file( fil ):
     df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5'),'df')
     #return ret
 import os
-if os.environ('USERNAME')==santivd24:
-	outputpath=/nfs/fanae/user/uo278174/[TFG]/eq_CP
+
+username = os.environ.get('USERNAME')
+
+if username == 'uo278174':
+    outputpath = "/nfs/fanae/user/uo278174/[TFG]/eq_CP"
 else:
-	outputpath=/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant
-files=glob(f"{outputpath}/ttbar/*.lhe")
+    outputpath = "/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant"
+files = glob.glob(f"{outputpath}/ttbar/*.lhe")
 pool=Pool(15)
 pool.map( process_file, files)
 
