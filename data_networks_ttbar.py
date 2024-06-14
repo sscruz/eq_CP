@@ -27,7 +27,7 @@ class dataset( IterableDataset ):
             control_vars=torch.Tensor( thedata[['control_cnr_crn','control_cnk_kn','control_rk_kr']].values).to(self.device)
             weights  =torch.Tensor(thedata[["weight_sm", "weight_lin",
                                              "weight_quad"]].values).to(self.device)
-            variables=torch.Tensor(thedata[['lep_px', 'lep_py', 'lep_pz',						#único lepton
+            variables=torch.Tensor(thedata[['lep_px', 'lep_py', 'lep_pz',						#unico lepton
                                              'b1_px', 'b1_py', 'b1_pz',
                                              'b2_px', 'b2_py', 'b2_pz',
                                              'light1_px', 'light1_py', 'light1_pz', 			#quark1
