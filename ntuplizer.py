@@ -30,7 +30,8 @@ def process_file( fil ):
         for label, pdgid in part_list:
             particles[label]=r.TLorentzVector()
             for p in event.particles:
-                print(p.status())
+                if p.status <0: 
+                    continue
                 if p.pdgid == pdgid:
                     particles[label].SetPxPyPzE( p.px, p.py, p.pz, p.energy) 
                     break
