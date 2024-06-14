@@ -89,7 +89,7 @@ if __name__ == "__main__":
         data_path=tempdir.name
     else:
         data_path=args.data_path
-
+    print(f'{data_path}/*.{args.data_format}'     )
     print("Loading training ")
     training =dataset( f'{data_path}/*.{args.data_format}'     , device=args.device)
     print("Loading test ")
