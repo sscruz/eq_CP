@@ -153,6 +153,8 @@ def process_file( fil ):
     cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lep,b1,b2,light1,light2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py', 'lep_charge']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
     df=pd.DataFrame( ret, columns=cols)    
     df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5'),'df')
+    df.replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "")
+
     #return ret
 import os
 
@@ -163,7 +165,7 @@ if username == 'uo278174':
 else:
     outputpath = "/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant"
 files = glob.glob(f"/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/*.lhe")
-print(files)
+#print(files)
 pool=Pool(15)
 pool.map( process_file, files)
 
