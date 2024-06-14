@@ -119,6 +119,9 @@ if __name__ == "__main__":
     test_loss_history =[]
     for ep in range(args.epochs):
         print("Epoch", ep)
+        train_labels,_ = next(iter(dataloader))
+        print(train_labels)
+
         loop=tqdm( dataloader)
         loss_per_batch=[]
         for weight, control, input_vars in loop:
