@@ -130,8 +130,8 @@ def process_file( fil ):
         lep.Boost(-boost_ttbar)
         lig.Boost(-boost_ttbar)
 
-        lep_hat = lp.Vect().Unit()
-        lig_hat = lp.Vect().Unit()
+        lep_hat = lep.Vect().Unit()
+        lig_hat = lig.Vect().Unit()
 
 
         #print(nhat.Dot(lphat)*rhat.Dot(lmhat), rhat.Dot(lphat)*nhat.Dot(lmhat))
