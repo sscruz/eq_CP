@@ -151,7 +151,7 @@ def process_file( fil ):
 
 
     cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lep,b1,b2,light1,light2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py', 'lep_charge']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
-    df=pd.DataFrame( ret, columns=cols)    
+    df=pd.DataFrame( ret, columns=cols,dtype=)    
     df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5').replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/[TFG]/TFG"),'df')
     #df.replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/[TFG]/TFG")
 

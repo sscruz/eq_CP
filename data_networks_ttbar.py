@@ -21,6 +21,8 @@ class dataset( IterableDataset ):
     def __iter__(self):
         for f in self.files:
             thedata=pd.read_hdf(f, 'df')
+            thedata = thedata.astype('float64')
+
             print(thedata.columns)
             control_vars=torch.Tensor( thedata[['control_cnr_crn','control_cnk_kn','control_rk_kr']].values).to(self.device)
             weights  =torch.Tensor(thedata[["weight_sm", "weight_lin",
