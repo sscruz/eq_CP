@@ -161,6 +161,7 @@ if username == 'uo278174':
 else:
     outputpath = "/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant"
 files = glob.glob(f"/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/*.lhe")
+print(files)
 pool=Pool(15)
 pool.map( process_file, files)
 
