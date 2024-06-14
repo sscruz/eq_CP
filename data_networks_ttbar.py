@@ -26,12 +26,12 @@ class dataset( IterableDataset ):
             weights  =torch.Tensor(thedata[["weight_sm", "weight_lin",
                                              "weight_quad"]].values).to(self.device)
             variables=torch.Tensor(thedata[['lep_px', 'lep_py', 'lep_pz',						#único lepton
-                                             'random_b1_px', 'random_b1_py', 'random_b1_pz',
-                                             'random_b2_px', 'random_b2_py', 'random_b2_pz',
+                                             'b1_px', 'b1_py', 'b1_pz',
+                                             'b2_px', 'b2_py', 'b2_pz',
                                              'light1_px', 'light1_py', 'light1_pz', 			#quark1
                                              'light2_px', 'light2_py', 'light2_pz',				#quark2
                                              'met_px', 'met_py',
-                                             'charge']].values).to(self.device)
+                                             'lep_charge']].values).to(self.device)
             yield from zip(weights, control_vars, variables)
 
 
