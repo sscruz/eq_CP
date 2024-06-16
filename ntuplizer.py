@@ -161,7 +161,7 @@ import os
 username = os.environ.get('USERNAME')
 
 if username == 'uo278174':
-    outputpath = "/nfs/fanae/user/uo278174/[TFG]/eq_CP"
+    outputpath = "/nfs/fanae/user/uo278174/TFG/eq_CP"
 else:
     outputpath = "/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant"
 files = glob.glob(f"/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/*.lhe")
