@@ -96,7 +96,7 @@ if __name__ == "__main__":
     test     =dataset( f'{data_path}/test/*.{args.data_format}', device='cpu')
 
 
-    net=network(args.device).to(args.device)
+    net=network(device=args.device)
 
 
     dataloader = DataLoader( training, batch_size=args.batch_size)
