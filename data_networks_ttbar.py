@@ -54,7 +54,7 @@ class network(nn.Module):
             nn.Linear(20, 1 ),
         )
         self.main_module.to(device)
-
+        self.device=device
     def forward(self, x):
 
         cpx= torch.stack([-x[:,0], -x[:,1] , -x[:,2],    # -lep 
