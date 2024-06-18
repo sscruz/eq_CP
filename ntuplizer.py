@@ -51,6 +51,7 @@ def process_file( fil ):
 		
         lep=[particles['lp'] if particles['lm'].E()==0 else particles['lm']]
         charge=[1 if lep[0]==particles['lm'] else -1]
+        lep_charge=np.float64(charge[0])
         input_particles = [lep[0], bs[0], bs[1], lights[0],lights[1]]
 
         for p in input_particles:
@@ -58,7 +59,7 @@ def process_file( fil ):
                 toret.append( getattr(p,what)())
 
         nus = particles['nup']+particles['num']
-        toret.extend([ nus.Px(), nus.Py(), charge[0]])
+        toret.extend([ nus.Px(), nus.Py(), lep_charge])
 
         # now high-level (control) variables
 
@@ -152,7 +153,7 @@ def process_file( fil ):
 
     cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lep,b1,b2,light1,light2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py', 'lep_charge']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
     df=pd.DataFrame( ret, columns=cols)
-    df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5').replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/TFG/"),'df')
+    df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5').replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/TFG/TFG"),'df')
     #df.replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/[TFG]/TFG")
 
     #return ret
