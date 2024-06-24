@@ -214,6 +214,7 @@ if __name__ == "__main__":
                         all_truth    [what] = all_truth[what] / all_sm[what]
                         plt.plot( thebinning, all_regressed[what], label='Regressed')
                         plt.plot( thebinning, all_truth[what]    , label='Truth')
+                        plt.legend()
                         plt.savefig( f'{args.name}/closure_{name}_var_{what}_epoch_{ep}.png')
                         plt.clf()
                         plots_epoch[f'closure_{name}_{what}']={}
@@ -237,6 +238,8 @@ if __name__ == "__main__":
             torch.save( train_loss, f"{args.name}/trainloss_{ep}.pt")
             plt.plot( [x+1 for x in range(ep+1)], train_loss_history, label='Train')
             plt.plot( [x+1 for x in range(ep+1)], test_loss_history, label='Test')
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
             plt.legend()
             plt.yscale('log')
             plt.savefig(f"{args.name}/training_history.png")
