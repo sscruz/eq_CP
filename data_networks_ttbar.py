@@ -34,7 +34,7 @@ class dataset( IterableDataset ):
                                              'light1_px', 'light1_py', 'light1_pz', 			#quark1
                                              'light2_px', 'light2_py', 'light2_pz',				#quark2
                                              'met_px', 'met_py',
-                                             'lep_charge']].values).to(self.device)
+                                             'lep_charge', 'l1_charge', 'l2_charge']].values).to(self.device)
             yield from zip(weights, control_vars, variables)
 
 
@@ -43,7 +43,7 @@ class network(nn.Module):
     def __init__(self, device):
         super().__init__()
         self.main_module = nn.Sequential( 
-            nn.Linear(18,80),
+            nn.Linear(20,80),
             nn.LeakyReLU(),
             nn.Linear(80, 80),
             nn.LeakyReLU(),
@@ -63,7 +63,7 @@ class network(nn.Module):
                           -x[:,12], -x[:,13] , -x[:,14],    # -q2 
                           -x[:,9],-x[:,10], -x[:,11],	#-q1	
                           -x[:,15],-x[:,16],			#-met
-                           -x[:,17]],  					# -charge
+                           -x[:,17], -x[:,18], -x[:,19]],  					# -charges
                          dim=1).to(self.device)
 
         return self.main_module(x)-self.main_module(cpx)

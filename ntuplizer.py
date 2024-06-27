@@ -40,18 +40,36 @@ def process_file( fil ):
         random.shuffle( bs ) 
         
         lights=[]
+        q_charges=[]
         for label in ['dp','dm','up','um','sp','sm','cp','cm']:
             if particles[label].E()!=0:
                 lights.append(particles[label])
-        
+                #aqui añado las cargas de los quarks  
+                if label in ['dp', 'sp']:  
+                    q_charges.append(-1/3)
+                elif label in ['up', 'cp']:  
+                    q_charges.append(2/3)
+                elif label in ['dm', 'sm']:  
+                    q_charges.append(1/3)
+                elif label in ['um', 'cm']:  
+                    q_charges.append(-2/3)
+                    
+
+
         if len(lights)!=2:
             print("alarm")
         
-        random.shuffle(lights)
+        #quito esto ya que guardando las cargas hay que asociarlas a una particula
+        #random.shuffle(lights)
 		
         lep=[particles['lp'] if particles['lm'].E()==0 else particles['lm']]
         charge=[1 if lep[0]==particles['lm'] else -1]
         lep_charge=np.float64(charge[0])
+
+        #cargas quarks
+        carga1=np.float64(q_charges[0])
+        carga2=np.float64(q_charges[1])
+
         input_particles = [lep[0], bs[0], bs[1], lights[0],lights[1]]
 
         for p in input_particles:
@@ -59,7 +77,7 @@ def process_file( fil ):
                 toret.append( getattr(p,what)())
 
         nus = particles['nup']+particles['num']
-        toret.extend([ nus.Px(), nus.Py(), lep_charge])
+        toret.extend([ nus.Px(), nus.Py(), lep_charge, carga1, carga2)
 
         # now high-level (control) variables
 
@@ -151,7 +169,7 @@ def process_file( fil ):
         ret.append(toret)
 
 
-    cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lep,b1,b2,light1,light2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py', 'lep_charge']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
+    cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lep,b1,b2,light1,light2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py', 'lep_charge', 'l1_charge', 'l2_charge']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
     df=pd.DataFrame( ret, columns=cols)
     df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5').replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/TFG/TFG"),'df')
     #df.replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/[TFG]/TFG")
