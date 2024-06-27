@@ -77,7 +77,7 @@ def process_file( fil ):
                 toret.append( getattr(p,what)())
 
         nus = particles['nup']+particles['num']
-        toret.extend([ nus.Px(), nus.Py(), lep_charge, carga1, carga2)
+        toret.extend([ nus.Px(), nus.Py(), lep_charge, carga1, carga2])
 
         # now high-level (control) variables
 
