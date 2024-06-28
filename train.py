@@ -242,6 +242,6 @@ if __name__ == "__main__":
             plt.ylabel('Loss')
             plt.legend()
             plt.yscale('log')
-            plt.show()
-            plt.savefig(f'{args.name}/training_history.png')
+
+            plt.savefig(f"{args.name}/training_history.png")
             plt.clf()
