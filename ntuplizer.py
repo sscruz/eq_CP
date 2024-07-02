@@ -72,8 +72,8 @@ def process_file( fil ):
         
         carga2=np.float64(q_charges[1])
         cargatemp=0
-        lightsplus=None
-        lightsminus=None
+        lightplus=None
+        lightminus=None
         if carga1 <0:
             cargatemp=carga1
             carga1=carga2
