@@ -63,7 +63,7 @@ class network(nn.Module):
                           -x[:,12], -x[:,13] , -x[:,14],    # -q2 
                           -x[:,9],-x[:,10], -x[:,11],	#-q1	
                           -x[:,15],-x[:,16],			#-met
-                           -x[:,17], -x[:,18], -x[:,19]],  					# -charges
+                           -x[:,17], -x[:,19], -x[:,18]],  					# -charges
                          dim=1).to(self.device)
 
         return self.main_module(x)-self.main_module(cpx)

@@ -12,8 +12,8 @@ from multiprocessing import Pool
 def process_file( fil ):
     ret=[]
     reader = LHEReader(fil,weight_mode='dict')
+    print('hi')
     for event in reader:
-
         # first the weights
         w=event.weights
         sm    = w['rw0000']
@@ -44,6 +44,7 @@ def process_file( fil ):
         for label in ['dp','dm','up','um','sp','sm','cp','cm']:
             if particles[label].E()!=0:
                 lights.append(particles[label])
+
                 #aqui añado las cargas de los quarks  
                 if label in ['dp', 'sp']:  
                     q_charges.append(-1/3)
@@ -68,9 +69,23 @@ def process_file( fil ):
 
         #cargas quarks
         carga1=np.float64(q_charges[0])
+        
         carga2=np.float64(q_charges[1])
+        cargatemp=0
+        lightsplus=None
+        lightsminus=None
+        if carga1 <0:
+            cargatemp=carga1
+            carga1=carga2
+            carga2=cargatemp
+            lightsplus=lights[1]
+            lightsminus=lights[0]
+ 
+        else:
+            lightsplus=lights[0]
+            lightsminus=lights[1]
 
-        input_particles = [lep[0], bs[0], bs[1], lights[0],lights[1]]
+        input_particles = [lep[0], bs[0], bs[1], lightplus,lightminus]
 
         for p in input_particles:
             for what in "Px,Py,Pz".split(","):
@@ -127,16 +142,16 @@ def process_file( fil ):
         if lep[0]==particles['lp']:
             lep=deepcopy(particles['lp'])
             for label in ['dp','dm','sp','sm']:
-                if particles[label]==lights[0]:
+                if particles[label]==lightplus:
                     lig=deepcopy(particles[label])
-                if particles[label]==lights[1]:
+                if particles[label]==lightminus:
                     lig=deepcopy(particles[label])
         else:
             lig=deepcopy(particles['lm'])
             for label in ['dp','dm','sp','sm']:
-                if particles[label]==lights[0]:
+                if particles[label]==lightplus:
                     lep=deepcopy(particles[label])
-                if particles[label]==lights[1]:
+                if particles[label]==lightminus:
                     lep=deepcopy(particles[label])
 
 	
@@ -145,6 +160,7 @@ def process_file( fil ):
           #      lights1=deepcopy(particles[label])
            # if particles[label]==lights[1]:
             #    lights2=deepcopy(particles[label])
+            
 		
         #lig=lights1+lights2
 		
@@ -171,20 +187,27 @@ def process_file( fil ):
 
     cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lep,b1,b2,light1,light2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py', 'lep_charge', 'l1_charge', 'l2_charge']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
     df=pd.DataFrame( ret, columns=cols)
-    df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5').replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/TFG/TFG"),'df')
+    df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5').replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/TFG/"),'df')
     #df.replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/[TFG]/TFG")
 
-    #return ret
-import os
+    return print('finalizado')
+#import os
 
-username = os.environ.get('USERNAME')
+#username = os.environ.get('USERNAME')
 
-if username == 'uo278174':
-    outputpath = "/nfs/fanae/user/uo278174/TFG/eq_CP"
-else:
-    outputpath = "/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant"
+#if username == 'uo278174':
+    #outputpath = "/nfs/fanae/user/uo278174/TFG/"
+#else:
+    #outputpath = "/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant"
 files = glob.glob(f"/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/*.lhe")
-#print(files)
+print(files)
+from os.path import exists
+
+# Construir la ruta completa al archivo utilizando el directorio actual como base
+if exists('/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/'):
+    print('Archivo existe')
+else:
+    print('Archivo no existe')
 pool=Pool(15)
 pool.map( process_file, files)
 
