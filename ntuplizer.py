@@ -78,12 +78,12 @@ def process_file( fil ):
             cargatemp=carga1
             carga1=carga2
             carga2=cargatemp
-            lightsplus=lights[1]
-            lightsminus=lights[0]
+            lightplus=lights[1]
+            lightminus=lights[0]
  
         else:
-            lightsplus=lights[0]
-            lightsminus=lights[1]
+            lightplus=lights[0]
+            lightminus=lights[1]
 
         input_particles = [lep[0], bs[0], bs[1], lightplus,lightminus]
 
