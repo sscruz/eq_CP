@@ -6,14 +6,14 @@ import random
 import math 
 from copy import deepcopy
 import numpy as np 
-from glob import glob 
+import glob 
 from multiprocessing import Pool 
 
 def process_file( fil ):
     ret=[]
     reader = LHEReader(fil,weight_mode='dict')
+    print('hi')
     for event in reader:
-
         # first the weights
         w=event.weights
         sm    = w['rw0000']
@@ -25,11 +25,13 @@ def process_file( fil ):
         toret=[sm, lin, quad]
 
         # now the particles
-        part_list=[('lp',11), ('lm',-11), ('bp',5), ('bm',-5), ('nup',12), ('num',-12), ('tp',6), ('tm',-6)]
+        part_list=[('lp',11), ('lm',-11), ('bp',5), ('bm',-5), ('nup',12), ('num',-12), ('tp',6), ('tm',-6),('dp',1),('dm',-1),('up',2),('um',-2),('sp',3),('sm',-3),('cp',4),('cm',-4)]
         particles={}
         for label, pdgid in part_list:
             particles[label]=r.TLorentzVector()
             for p in event.particles:
+                if p.status <0: 
+                    continue
                 if p.pdgid == pdgid:
                     particles[label].SetPxPyPzE( p.px, p.py, p.pz, p.energy) 
                     break
@@ -37,15 +39,60 @@ def process_file( fil ):
         bs=[particles['bp'],particles['bm']]
         random.shuffle( bs ) 
         
+        lights=[]
+        q_charges=[]
+        for label in ['dp','dm','up','um','sp','sm','cp','cm']:
+            if particles[label].E()!=0:
+                lights.append(particles[label])
+
+                #aqui añado las cargas de los quarks  
+                if label in ['dp', 'sp']:  
+                    q_charges.append(-1/3)
+                elif label in ['up', 'cp']:  
+                    q_charges.append(2/3)
+                elif label in ['dm', 'sm']:  
+                    q_charges.append(1/3)
+                elif label in ['um', 'cm']:  
+                    q_charges.append(-2/3)
+                    
+
+
+        if len(lights)!=2:
+            print("alarm")
         
-        input_particles = [particles['lp'], particles['lm'], bs[0], bs[1]]
+        #quito esto ya que guardando las cargas hay que asociarlas a una particula
+        #random.shuffle(lights)
+		
+        lep=[particles['lp'] if particles['lm'].E()==0 else particles['lm']]
+        charge=[1 if lep[0]==particles['lm'] else -1]
+        lep_charge=np.float64(charge[0])
+
+        #cargas quarks
+        carga1=np.float64(q_charges[0])
+        
+        carga2=np.float64(q_charges[1])
+        cargatemp=0
+        lightplus=None
+        lightminus=None
+        if carga1 <0:
+            cargatemp=carga1
+            carga1=carga2
+            carga2=cargatemp
+            lightplus=lights[1]
+            lightminus=lights[0]
+ 
+        else:
+            lightplus=lights[0]
+            lightminus=lights[1]
+
+        input_particles = [lep[0], bs[0], bs[1], lightplus,lightminus]
 
         for p in input_particles:
             for what in "Px,Py,Pz".split(","):
                 toret.append( getattr(p,what)())
 
         nus = particles['nup']+particles['num']
-        toret.extend([ nus.Px(), nus.Py()])
+        toret.extend([ nus.Px(), nus.Py(), lep_charge, carga1, carga2])
 
         # now high-level (control) variables
 
@@ -88,20 +135,47 @@ def process_file( fil ):
         # nhat=(phat.Cross(khat))   #(sign/rval)*
 
         # now profit from it 
-        lp=deepcopy(particles['lp'])
-        lm=deepcopy(particles['lm'])
 
-        lp.Boost(-boost_ttbar)
-        lm.Boost(-boost_ttbar)
+        #lep=[deepcopy(particles['lp']) if lep[0]==particles['lp'] else deepcopy(particles['lm'])]
+        #lep=lep[0]
+		
+        if lep[0]==particles['lp']:
+            lep=deepcopy(particles['lp'])
+            for label in ['dp','dm','sp','sm']:
+                if particles[label]==lightplus:
+                    lig=deepcopy(particles[label])
+                if particles[label]==lightminus:
+                    lig=deepcopy(particles[label])
+        else:
+            lig=deepcopy(particles['lm'])
+            for label in ['dp','dm','sp','sm']:
+                if particles[label]==lightplus:
+                    lep=deepcopy(particles[label])
+                if particles[label]==lightminus:
+                    lep=deepcopy(particles[label])
 
-        lp_hat = lp.Vect().Unit()
-        lm_hat = lm.Vect().Unit()
+	
+        #for label in ['dp','dm','up','um','sp','sm','cp','cm']:
+         #   if particles[label]==lights[0]:
+          #      lights1=deepcopy(particles[label])
+           # if particles[label]==lights[1]:
+            #    lights2=deepcopy(particles[label])
+            
+		
+        #lig=lights1+lights2
+		
+        lep.Boost(-boost_ttbar)
+        lig.Boost(-boost_ttbar)
+
+        lep_hat = lep.Vect().Unit()
+        lig_hat = lig.Vect().Unit()
+
 
         #print(nhat.Dot(lphat)*rhat.Dot(lmhat), rhat.Dot(lphat)*nhat.Dot(lmhat))
         #print(kk)
-        cnr_crn = n_hat.Dot(lp_hat)*r_hat.Dot(lm_hat)-r_hat.Dot(lp_hat)*n_hat.Dot(lm_hat)
-        cnk_ckn = n_hat.Dot(lp_hat)*k_hat.Dot(lm_hat)-k_hat.Dot(lp_hat)*n_hat.Dot(lm_hat)
-        crk_ckr = r_hat.Dot(lp_hat)*k_hat.Dot(lm_hat)-k_hat.Dot(lp_hat)*r_hat.Dot(lm_hat)
+        cnr_crn = n_hat.Dot(lep_hat)*r_hat.Dot(lig_hat)-r_hat.Dot(lep_hat)*n_hat.Dot(lig_hat)
+        cnk_ckn = n_hat.Dot(lep_hat)*k_hat.Dot(lig_hat)-k_hat.Dot(lep_hat)*n_hat.Dot(lig_hat)
+        crk_ckr = r_hat.Dot(lep_hat)*k_hat.Dot(lig_hat)-k_hat.Dot(lep_hat)*r_hat.Dot(lig_hat)
         
         toret.extend([cnr_crn,cnk_ckn, crk_ckr])
 
@@ -111,12 +185,29 @@ def process_file( fil ):
         ret.append(toret)
 
 
-    cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lp,lm,b1,b2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
-    df=pd.DataFrame( ret, columns=cols)    
-    df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5'),'df')
-    #return ret
+    cols=['weight_sm','weight_lin','weight_quad']+ ['%s_%s'%(part, what) for part in 'lep,b1,b2,light1,light2'.split(",") for what in 'px,py,pz'.split(",") ]+['met_px','met_py', 'lep_charge', 'l1_charge', 'l2_charge']+['control_cnr_crn','control_cnk_kn','control_rk_kr']
+    df=pd.DataFrame( ret, columns=cols)
+    df.to_hdf(fil.replace("unweighted_events_","ntuple_").replace('.lhe','.h5').replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/TFG/"),'df')
+    #df.replace("/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/", "/nfs/fanae/user/uo278174/[TFG]/TFG")
 
-files=glob("/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/*.lhe")
+    return print('finalizado')
+#import os
+
+#username = os.environ.get('USERNAME')
+
+#if username == 'uo278174':
+    #outputpath = "/nfs/fanae/user/uo278174/TFG/"
+#else:
+    #outputpath = "/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant"
+files = glob.glob(f"/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/*.lhe")
+print(files)
+from os.path import exists
+
+# Construir la ruta completa al archivo utilizando el directorio actual como base
+if exists('/lustrefs/hdd_pool_dir/eq_ntuples/ttbar_semi_decomp/'):
+    print('Archivo existe')
+else:
+    print('Archivo no existe')
 pool=Pool(15)
 pool.map( process_file, files)
 

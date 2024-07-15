@@ -89,14 +89,14 @@ if __name__ == "__main__":
         data_path=tempdir.name
     else:
         data_path=args.data_path
-
+    print(f'{data_path}/*.{args.data_format}'     )
     print("Loading training ")
     training =dataset( f'{data_path}/*.{args.data_format}'     , device=args.device)
     print("Loading test ")
     test     =dataset( f'{data_path}/test/*.{args.data_format}', device='cpu')
 
 
-    net=network(args.device).to(args.device)
+    net=network(device=args.device)
 
 
     dataloader = DataLoader( training, batch_size=args.batch_size)
@@ -119,6 +119,7 @@ if __name__ == "__main__":
     test_loss_history =[]
     for ep in range(args.epochs):
         print("Epoch", ep)
+
         loop=tqdm( dataloader)
         loss_per_batch=[]
         for weight, control, input_vars in loop:
@@ -213,6 +214,7 @@ if __name__ == "__main__":
                         all_truth    [what] = all_truth[what] / all_sm[what]
                         plt.plot( thebinning, all_regressed[what], label='Regressed')
                         plt.plot( thebinning, all_truth[what]    , label='Truth')
+                        plt.legend()
                         plt.savefig( f'{args.name}/closure_{name}_var_{what}_epoch_{ep}.png')
                         plt.clf()
                         plots_epoch[f'closure_{name}_{what}']={}
@@ -236,7 +238,10 @@ if __name__ == "__main__":
             torch.save( train_loss, f"{args.name}/trainloss_{ep}.pt")
             plt.plot( [x+1 for x in range(ep+1)], train_loss_history, label='Train')
             plt.plot( [x+1 for x in range(ep+1)], test_loss_history, label='Test')
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
             plt.legend()
             plt.yscale('log')
+
             plt.savefig(f"{args.name}/training_history.png")
             plt.clf()

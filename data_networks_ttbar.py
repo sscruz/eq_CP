@@ -21,14 +21,20 @@ class dataset( IterableDataset ):
     def __iter__(self):
         for f in self.files:
             thedata=pd.read_hdf(f, 'df')
+
+
+            #print(thedata.columns)
             control_vars=torch.Tensor( thedata[['control_cnr_crn','control_cnk_kn','control_rk_kr']].values).to(self.device)
             weights  =torch.Tensor(thedata[["weight_sm", "weight_lin",
                                              "weight_quad"]].values).to(self.device)
-            variables=torch.Tensor(thedata[['lp_px', 'lp_py', 'lp_pz',
-                                             'lm_px', 'lm_py', 'lm_pz',
+            #print(thedata.dtypes)
+            variables=torch.Tensor(thedata[['lep_px', 'lep_py', 'lep_pz',						#unico lepton
                                              'b1_px', 'b1_py', 'b1_pz',
                                              'b2_px', 'b2_py', 'b2_pz',
-                                             'met_px', 'met_py']].values).to(self.device)
+                                             'light1_px', 'light1_py', 'light1_pz', 			#quark1
+                                             'light2_px', 'light2_py', 'light2_pz',				#quark2
+                                             'met_px', 'met_py',
+                                             'lep_charge', 'l1_charge', 'l2_charge']].values).to(self.device)
             yield from zip(weights, control_vars, variables)
 
 
@@ -37,7 +43,7 @@ class network(nn.Module):
     def __init__(self, device):
         super().__init__()
         self.main_module = nn.Sequential( 
-            nn.Linear(14,80),
+            nn.Linear(20,80),
             nn.LeakyReLU(),
             nn.Linear(80, 80),
             nn.LeakyReLU(),
@@ -48,14 +54,16 @@ class network(nn.Module):
             nn.Linear(20, 1 ),
         )
         self.main_module.to(device)
-
+        self.device=device
     def forward(self, x):
 
-        cpx= torch.stack([-x[:,3], -x[:,4] , -x[:,5],    # -lep minus
-                          -x[:,0], -x[:,1] , -x[:,2],    # -lep plus
-                          -x[:,9], -x[:,10], -x[:,11],   # -b2 # this shouldnt add information but ok 
-                          -x[:,6], -x[:,7] , -x[:,8],    # -b1 
-                          -x[:,12],-x[:,13]          ],  # -met
-                         dim=1)
+        cpx= torch.stack([-x[:,0], -x[:,1] , -x[:,2],    # -lep 
+                          -x[:,6], -x[:,7] , -x[:,8],    # -b2 
+                          -x[:,3], -x[:,4], -x[:,5],   # -b1
+                          -x[:,12], -x[:,13] , -x[:,14],    # -q2 
+                          -x[:,9],-x[:,10], -x[:,11],	#-q1	
+                          -x[:,15],-x[:,16],			#-met
+                           -x[:,17], -x[:,19], -x[:,18]],  					# -charges
+                         dim=1).to(self.device)
 
         return self.main_module(x)-self.main_module(cpx)
