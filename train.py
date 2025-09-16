@@ -21,13 +21,14 @@ if __name__ == "__main__":
     parser.add_argument("--lr"            ,  type=float, default=0.0001, help="Learning rate")
     parser.add_argument("--batch-size"    ,  type=int  , default=500, help="Batch size")
     parser.add_argument("--num-threads"    ,  type=int  , default=16, help="Number of threads when running in cpu")
-    parser.add_argument("--epochs"        ,  type=int  , default=1000, help="Number of epochs")
+    parser.add_argument("--epochs"        ,  type=int  , default=200, help="Number of epochs")
     parser.add_argument("--prefetch"      ,  type=str  , default=None, help="Temporary directory to prefetch data")
     parser.add_argument("--data-format"   ,  type=str  , default='h5', help="Extension of input files")
     parser.add_argument("--data-path"     , type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/sesanche/CP_equivariant/ttbar/ntuples", help="Path of the input dataset")
-    parser.add_argument("--analysis"     , type=str, default="ttbar", choices=['ttbar','ttbar_ideal','ttbar_withneutrinos', 'ttbb_godmode', 'ttZ_3l','ttZ_3l_v2','ttA_1l','ttW', 'ttbar_pl','ttA_pl', 'ww', 'wz','tzq_pl', 'ttz_pl', 'ttA_delphes', 'wz_delphes'], help="Analysis to run, defines dataset type and neural network")
+    parser.add_argument("--analysis"     , type=str, default="ttbar", help="Analysis to run, defines dataset type and neural network")
     parser.add_argument("--load-model"     , type=str, default=None, help="Analysis to run, defines dataset type and neural network")
     parser.add_argument("--noequivariant"  , type=int, default=0, help="NN type")
+    parser.add_argument("--no-plot"  ,  action='store_true',  help="Skip plotting" ) 
 
     args = parser.parse_args()
     max_value=0.1
@@ -71,6 +72,28 @@ if __name__ == "__main__":
         from data_networks_ttA_delphes import dataset, network
     elif args.analysis == "wz_delphes": 
         from data_networks_wz_delphes import dataset, network
+    elif args.analysis == "ttZ_reco": 
+        from data_networks_ttZ_reco_level import dataset, network
+    elif args.analysis == "ttZ_full": 
+        from data_networks_full_ttZ_ctZI import dataset, network
+    elif args.analysis == "ttZ_ctGI_full": 
+        from data_networks_full_ttZ_ctGI import dataset, network
+    elif args.analysis == "ttZ_ctZI_4l": 
+        from data_networks_full_ttZ4l_ctZI import dataset, network
+    elif args.analysis == "tZq_full": 
+        from data_networks_full_tZq_ctWI import dataset, network
+    elif args.analysis == "tZq_full_peryear": 
+        from data_networks_full_tZq_ctWI_peryear import dataset, network
+    elif args.analysis == "ttZ_full_peryear": 
+        from data_networks_full_ttZ_ctZI_peryear import dataset, network
+    elif args.analysis == "ctZI_full_peryear": 
+        from data_networks_full_weighted_ctZI_perYear import dataset, network
+    elif args.analysis == "ctWI_full_peryear": 
+        from data_networks_full_weighted_ctWI_perYear import dataset, network
+
+        
+    elif args.analysis == "ctGI_full": 
+        from data_networks_full_weighted_ctGI import dataset, network
 
     else:
         raise NotImplementedError(f"Option {args.analysis} not implemented")
@@ -98,7 +121,7 @@ if __name__ == "__main__":
     net=network(args.device)
 
 
-    dataloader = DataLoader( training, batch_size=args.batch_size) 
+    dataloader = DataLoader( training, batch_size=args.batch_size, shuffle=True) 
     test_loader  = DataLoader(test, batch_size=1000)
 
 
@@ -120,18 +143,19 @@ if __name__ == "__main__":
 
         loop=tqdm( dataloader)
         loss_per_batch=[]
-        for weight, control, input_vars in loop:
+        for ibatch, (weight, control, input_vars) in enumerate(loop):
             optimizer.zero_grad()
 
             score=net( input_vars )
+            # plt.hist( score.numpy(force=True), bins=50)
+            # plt.savefig( f'score_batch_{ibatch}.png')
+            # plt.clf()
             loss=loss_func( weight, score, control)
             loss_per_batch.append( loss.item() )
+            loop.set_description("Batch loss: %f"%loss.item())
             loss.backward()
             optimizer.step()
-        #plt.hist( loss_per_batch, bins=100, alpha=0.5 ) 
-        #print(loss_per_batch)
-        #plt.show()
-        #continue
+            
 
         with torch.no_grad():
 
@@ -154,14 +178,19 @@ if __name__ == "__main__":
                     loss +=loss_func( weight, score, control)*weight.shape[0] # multiply bc loss gives the average
                     count+=weight.shape[0]
 
-                    if ep%5== 0:
+                    if ep%5== 0 and not args.no_plot:
+                        
+                        all_regressed = defaultdict(list)
+                        all_truth     = defaultdict(list)
+                        all_sm        = defaultdict(list)
+                        
                         for_plot_true   =torch.cat( [for_plot_true   , weight[:,1]/weight[:,0]])
                         for_plot_regress=torch.cat( [for_plot_regress, score])
                         for var in range(control.shape[1]):
                             if hasattr(training, 'var_range'):
                                 binning = np.linspace(training.var_range[var][0],training.var_range[var][1])
                             else:
-                                binning = np.linspace(-1,1)
+                                binning = np.linspace(-1,1,59)
                             regressed[var].append( np.histogram( control[:,var], weights=(weight[:,0]*score[:,0]), bins=binning)[0])
                             truth    [var].append( np.histogram( control[:,var], weights=(weight[:,1])           , bins=binning)[0])
                             sm       [var].append( np.histogram( control[:,var], weights=(weight[:,0])           , bins=binning)[0])
@@ -180,14 +209,7 @@ if __name__ == "__main__":
                         
                     
 
-                if ep%5 == 0:
-                    all_regressed = defaultdict(list)
-                    all_truth     = defaultdict(list)
-                    all_sm        = defaultdict(list)
-                    
-                    plt.hist2d( for_plot_true.numpy(), for_plot_regress.flatten().numpy(), bins=40, range=[[-0.2,0.2],[-0.05,0.05]])
-                    plt.savefig(f'{args.name}/{name}_2d_{ep}.png')
-                    plt.clf()
+                if ep%5 == 0 and not args.no_plot:
 
                     plots_epoch={}
                     for what in regressed:
@@ -196,18 +218,19 @@ if __name__ == "__main__":
                         all_truth    [what] = sum(truth[what])
                         all_sm       [what] = sum(sm[what])
 
-                        norm=200/np.sum(all_sm[what])
+                        #norm=200/np.sum(all_sm[what])
                         thebinning=(binnings[what][1:]+binnings[what][:-1])/2
-                        plt.plot(thebinning, all_truth[what]*norm*10, label='Linear x 10')
-                        plt.plot(thebinning, all_sm[what]   *norm, label='SM')
+                        plt.plot(thebinning, all_truth[what]*10, label='Linear x 10')# *norm
+                        plt.plot(thebinning, all_sm[what]   , label='SM')            # *norm
+                        plt.plot([-max_value, max_value], [0,0], 'k')
                         plt.legend()
                         plt.savefig(f'{args.name}/histogram_{name}_var_{what}_epoch_{ep}.png')
                         plt.clf()
                         
                         plots_epoch[f'histogram_{name}_{what}']={}
                         plots_epoch[f'histogram_{name}_{what}']['binning']=binnings[what].tolist()
-                        plots_epoch[f'histogram_{name}_{what}']['SM']     =(all_sm[what]   *norm   ).tolist()
-                        plots_epoch[f'histogram_{name}_{what}']['linear'] =(all_truth[what]*norm*10).tolist()
+                        plots_epoch[f'histogram_{name}_{what}']['SM']     =(all_sm[what]      ).tolist() # *norm
+                        plots_epoch[f'histogram_{name}_{what}']['linear'] =(all_truth[what]*10).tolist() # *norm
                         
 
 
