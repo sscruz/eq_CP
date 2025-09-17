@@ -143,14 +143,7 @@ if __name__ == "__main__":
         print("Epoch", ep)
         loop=tqdm( dataloader)
         loss_per_batch=[]
-<<<<<<< HEAD
         for ibatch, (weight, control, input_vars) in enumerate(loop):
-=======
-        for weight, control, input_vars in loop:
-            weight=weight.to(args.device)
-            control=control.to(args.device)
-            input_vars=input_vars.to(args.device)
->>>>>>> a81142b13db16049727eab8a952d9415a4a4449a
             optimizer.zero_grad()
             score=net( input_vars )
             # plt.hist( score.numpy(force=True), bins=50)
@@ -185,32 +178,20 @@ if __name__ == "__main__":
                     count+=weight.shape[0]
 
                     if ep%5== 0 and not args.no_plot:
-<<<<<<< HEAD
-                        
                         all_regressed = defaultdict(list)
                         all_truth     = defaultdict(list)
                         all_sm        = defaultdict(list)
                         
                         for_plot_true   =torch.cat( [for_plot_true   , weight[:,1]/weight[:,0]])
-=======
-                        for_plot_true   =torch.cat( [for_plot_true   , weight[:,1].to(args.device)/weight[:,0].to(args.device)])
->>>>>>> a81142b13db16049727eab8a952d9415a4a4449a
                         for_plot_regress=torch.cat( [for_plot_regress, score])
                         for var in range(control.shape[1]):
                             if hasattr(training, 'var_range'):
                                 binning = np.linspace(training.var_range[var][0],training.var_range[var][1])
                             else:
-<<<<<<< HEAD
                                 binning = np.linspace(-1,1,59)
                             regressed[var].append( np.histogram( control[:,var], weights=(weight[:,0]*score[:,0]), bins=binning)[0])
                             truth    [var].append( np.histogram( control[:,var], weights=(weight[:,1])           , bins=binning)[0])
                             sm       [var].append( np.histogram( control[:,var], weights=(weight[:,0])           , bins=binning)[0])
-=======
-                                binning = np.linspace(-1,1)
-                            regressed[var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,0].cpu()*score[:,0].cpu()), bins=binning)[0])
-                            truth    [var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,1].cpu())           , bins=binning)[0])
-                            sm       [var].append( np.histogram( control[:,var].cpu(), weights=(weight[:,0].cpu())           , bins=binning)[0])
->>>>>>> a81142b13db16049727eab8a952d9415a4a4449a
                             binnings [var]=binning
 
                         bins=np.linspace(-max_value,max_value,26)
@@ -222,16 +203,6 @@ if __name__ == "__main__":
                     
 
                 if ep%5 == 0 and not args.no_plot:
-<<<<<<< HEAD
-=======
-                    all_regressed = defaultdict(list)
-                    all_truth     = defaultdict(list)
-                    all_sm        = defaultdict(list)
-                    
-                    plt.hist2d( for_plot_true.cpu().numpy(), for_plot_regress.cpu().flatten().numpy(), bins=40, range=[[-0.2,0.2],[-0.05,0.05]])
-                    plt.savefig(f'{args.name}/{name}_2d_{ep}.png')
-                    plt.clf()
->>>>>>> a81142b13db16049727eab8a952d9415a4a4449a
 
                     plots_epoch={}
                     for what in regressed:
